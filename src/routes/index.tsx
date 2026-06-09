@@ -271,7 +271,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
           )}
           {page === "inventory" && <Inventory products={products} reload={loadAll} setModal={setModal} />}
           {page === "customers" && <CustomersPage customers={customers} reload={loadAll} setModal={setModal} />}
-          {page === "reports" && <Reports sales={sales} saleItems={saleItems} />}
+          {page === "reports" && <Reports sales={sales} saleItems={saleItems} reload={loadAll} setModal={setModal} />}
           {page === "staff" && <StaffPage staff={staffAll} reload={loadAll} setModal={setModal} />}
         </div>
       </main>
@@ -808,10 +808,11 @@ function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =
 }
 
 // ---------- REPORTS ----------
-function Reports({ sales, saleItems }: { sales: Sale[]; saleItems: SaleItem[] }) {
+function Reports({ sales, saleItems, reload, setModal }: { sales: Sale[]; saleItems: SaleItem[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
   const today = new Date().toISOString().slice(0, 10);
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const weekStart = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+  const [query, setQuery] = useState("");
 
   const todayTotal = sales.filter(s => s.created_at.startsWith(today)).reduce((a, s) => a + Number(s.total), 0);
   const weekTotal = sales.filter(s => s.created_at >= weekStart).reduce((a, s) => a + Number(s.total), 0);
@@ -836,6 +837,35 @@ function Reports({ sales, saleItems }: { sales: Sale[]; saleItems: SaleItem[] })
     agg[it.product_name].total += Number(it.total);
   });
   const top = Object.entries(agg).sort((a, b) => b[1].total - a[1].total).slice(0, 5);
+
+  const q = query.trim().toLowerCase();
+  const filteredSales = q
+    ? sales.filter(s =>
+        s.invoice_no.toLowerCase().includes(q) ||
+        (s.customers?.name || "").toLowerCase().includes(q) ||
+        (s.staff?.name || "").toLowerCase().includes(q),
+      )
+    : sales;
+
+  function viewInvoice(s: Sale) {
+    openInvoiceFromSale(s, saleItems, setModal);
+  }
+  function editSale(s: Sale) {
+    setModal(<EditSaleForm sale={s} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+  }
+  async function deleteSale(s: Sale) {
+    if (!confirm(`Delete invoice ${s.invoice_no}? This will restore stock and remove the record.`)) return;
+    const { data: items } = await supabase.from("sale_items").select("*").eq("sale_id", s.id);
+    for (const it of items ?? []) {
+      if (it.product_id) {
+        const { data: prod } = await supabase.from("products").select("stock").eq("id", it.product_id).single();
+        if (prod) await supabase.from("products").update({ stock: Number(prod.stock) + Number(it.quantity) }).eq("id", it.product_id);
+      }
+    }
+    await supabase.from("sale_items").delete().eq("sale_id", s.id);
+    await supabase.from("sales").delete().eq("id", s.id);
+    await reload();
+  }
 
   return (
     <>
@@ -875,27 +905,115 @@ function Reports({ sales, saleItems }: { sales: Sale[]; saleItems: SaleItem[] })
         </div>
       </div>
       <div className="card">
-        <div className="card-title">All Sales History</div>
+        <div className="card-title">
+          <span>All Sales History</span>
+          <div style={{ position: "relative", width: 260 }}>
+            <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text3)" }} />
+            <input
+              className="search-input"
+              style={{ paddingLeft: 30, width: "100%" }}
+              placeholder="Search invoice, customer, staff…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+        </div>
         <table>
-          <thead><tr><th>Invoice</th><th>Customer</th><th>Discount</th><th>Total</th><th>Staff</th><th>Date</th></tr></thead>
+          <thead><tr><th>Invoice</th><th>Customer</th><th>Discount</th><th>Total</th><th>Paid</th><th>Staff</th><th>Date</th><th style={{ textAlign: "right" }}>Actions</th></tr></thead>
           <tbody>
-            {sales.map(s => (
+            {filteredSales.map(s => (
               <tr key={s.id}>
                 <td><span className="badge badge-blue">{s.invoice_no}</span></td>
                 <td>{s.customers?.name || "Walk-in"}</td>
                 <td>{Number(s.discount) > 0 ? <span className="badge badge-warning">{fmt(Number(s.discount))}</span> : "—"}</td>
                 <td><strong>{fmt(Number(s.total))}</strong></td>
+                <td>{fmt(Number(s.paid))}{Number(s.due) > 0 && <span className="badge badge-danger" style={{ marginLeft: 6 }}>Due {fmt(Number(s.due))}</span>}</td>
                 <td>{s.staff?.name || "—"}</td>
                 <td style={{ fontSize: 12, color: "var(--text3)" }}>{new Date(s.created_at).toLocaleString()}</td>
+                <td>
+                  <div className="row-actions" style={{ justifyContent: "flex-end" }}>
+                    <button className="btn btn-sm btn-icon" title="View / Print" onClick={() => viewInvoice(s)}><Printer size={13} /></button>
+                    <button className="btn btn-sm btn-icon" title="Edit" onClick={() => editSale(s)}><Edit size={13} /></button>
+                    <button className="btn btn-sm btn-icon btn-danger" title="Delete" onClick={() => deleteSale(s)}><Trash2 size={13} /></button>
+                  </div>
+                </td>
               </tr>
             ))}
-            {sales.length === 0 && <tr><td colSpan={6} className="empty-row">No sales</td></tr>}
+            {filteredSales.length === 0 && <tr><td colSpan={8} className="empty-row">{q ? "No matching invoices" : "No sales"}</td></tr>}
           </tbody>
         </table>
       </div>
     </>
   );
 }
+
+// Re-print an existing sale invoice
+async function openInvoiceFromSale(s: Sale, _allItems: SaleItem[], setModal: (n: React.ReactNode) => void) {
+  const { data: items } = await supabase.from("sale_items").select("*").eq("sale_id", s.id);
+  const cart: CartItem[] = (items ?? []).map(it => ({
+    id: it.product_id || it.id, name: it.product_name, price: Number(it.price), qty: Number(it.quantity), stock: 0,
+  }));
+  showInvoice({
+    invoice_no: s.invoice_no,
+    items: cart,
+    subtotal: Number(s.subtotal),
+    discAmt: Number(s.discount),
+    total: Number(s.total),
+    paid: Number(s.paid),
+    due: Number(s.due),
+    staff: s.staff?.name || "—",
+    customer: s.customers?.name || "Walk-in",
+    customer_phone: "",
+    date: new Date(s.created_at),
+  }, setModal);
+}
+
+function EditSaleForm({ sale, onClose, onSaved }: { sale: Sale; onClose: () => void; onSaved: () => void }) {
+  const [discount, setDiscount] = useState(String(sale.discount));
+  const [paid, setPaid] = useState(String(sale.paid));
+  const [saving, setSaving] = useState(false);
+
+  const discNum = Math.max(0, Number(discount) || 0);
+  const total = Math.max(0, Number(sale.subtotal) - discNum);
+  const paidNum = Math.max(0, Number(paid) || 0);
+  const due = Math.max(0, total - paidNum);
+
+  async function save() {
+    setSaving(true);
+    await supabase.from("sales").update({
+      discount: discNum, total, paid: paidNum, due,
+    }).eq("id", sale.id);
+    setSaving(false);
+    onSaved();
+  }
+
+  return (
+    <Modal title={`Edit Invoice — ${sale.invoice_no}`} setModal={() => onClose()} body={
+      <div>
+        <div className="form-group">
+          <label className="form-label">Subtotal</label>
+          <input className="form-input" value={fmt(Number(sale.subtotal))} disabled />
+        </div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Discount (৳)</label>
+            <input className="form-input" type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Paid (৳)</label>
+            <input className="form-input" type="number" value={paid} onChange={(e) => setPaid(e.target.value)} />
+          </div>
+        </div>
+        <div className="cart-row"><span>Grand Total</span><strong>{fmt(total)}</strong></div>
+        <div className="cart-row"><span>Due</span><strong className={due > 0 ? "text-danger" : "text-success"}>{fmt(due)}</strong></div>
+      </div>
+    } actions={[
+      { label: "Cancel", onClick: onClose },
+      { label: saving ? "Saving…" : "Save", primary: true, icon: <Check size={14} />, onClick: save },
+    ]} />
+  );
+}
+
 
 // ---------- STAFF ----------
 function StaffPage({ staff, reload, setModal }: { staff: Staff[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
