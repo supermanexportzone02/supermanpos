@@ -632,7 +632,7 @@ function showInvoice(d: {
 // ---------- INVENTORY ----------
 function Inventory({ products, reload, setModal }: { products: Product[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
   function openForm(editing?: Product) {
-    setModal(<ProductForm editing={editing} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+    setModal(<ProductForm editing={editing} products={products} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
   }
   async function del(p: Product) {
     if (!confirm(`Delete "${p.name}"?`)) return;
@@ -672,9 +672,15 @@ function Inventory({ products, reload, setModal }: { products: Product[]; reload
   );
 }
 
-function ProductForm({ editing, onClose, onSaved }: { editing?: Product; onClose: () => void; onSaved: () => void | Promise<void> }) {
+function ProductForm({ editing, products, onClose, onSaved }: { editing?: Product; products: Product[]; onClose: () => void; onSaved: () => void | Promise<void> }) {
+  const allCategories = useMemo(() => {
+    const set = new Set<string>(CATEGORIES);
+    products.forEach(p => p.category && set.add(p.category));
+    return Array.from(set);
+  }, [products]);
+  const [categoryList, setCategoryList] = useState<string[]>(allCategories);
   const [name, setName] = useState(editing?.name || "");
-  const [category, setCategory] = useState(editing?.category || CATEGORIES[0]);
+  const [category, setCategory] = useState(editing?.category || categoryList[0]);
   const [barcode, setBarcode] = useState(editing?.barcode || "");
   const [price, setPrice] = useState(String(editing?.price ?? ""));
   const [cost, setCost] = useState(String(editing?.cost ?? ""));
@@ -693,6 +699,19 @@ function ProductForm({ editing, onClose, onSaved }: { editing?: Product; onClose
     await onSaved();
   }
 
+  function handleCategoryChange(val: string) {
+    if (val === "__new__") {
+      const nc = prompt("Enter new category name:");
+      if (nc && nc.trim()) {
+        const trimmed = nc.trim();
+        if (!categoryList.includes(trimmed)) setCategoryList([...categoryList, trimmed]);
+        setCategory(trimmed);
+      }
+      return;
+    }
+    setCategory(val);
+  }
+
   const body = (
     <>
       <div className="form-group">
@@ -702,8 +721,9 @@ function ProductForm({ editing, onClose, onSaved }: { editing?: Product; onClose
       <div className="form-grid">
         <div className="form-group">
           <label className="form-label">Category</label>
-          <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
-            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          <select className="form-select" value={category} onChange={(e) => handleCategoryChange(e.target.value)}>
+            {categoryList.map(c => <option key={c} value={c}>{c}</option>)}
+            <option value="__new__">+ Add new category…</option>
           </select>
         </div>
         <div className="form-group">
@@ -934,6 +954,7 @@ function StaffForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => P
         <div className="form-group"><label className="form-label">Role</label>
           <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="admin">Admin</option>
+            <option value="manager">Manager</option>
             <option value="salesman">Salesman</option>
             <option value="cashier">Cashier</option>
           </select>
