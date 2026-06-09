@@ -632,7 +632,7 @@ function showInvoice(d: {
 // ---------- INVENTORY ----------
 function Inventory({ products, reload, setModal }: { products: Product[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
   function openForm(editing?: Product) {
-    setModal(<ProductForm editing={editing} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+    setModal(<ProductForm editing={editing} products={products} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
   }
   async function del(p: Product) {
     if (!confirm(`Delete "${p.name}"?`)) return;
