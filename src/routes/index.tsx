@@ -954,6 +954,7 @@ function StaffForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => P
         <div className="form-group"><label className="form-label">Role</label>
           <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="admin">Admin</option>
+            <option value="manager">Manager</option>
             <option value="salesman">Salesman</option>
             <option value="cashier">Cashier</option>
           </select>
