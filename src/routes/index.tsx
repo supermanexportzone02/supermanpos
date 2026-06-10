@@ -369,6 +369,7 @@ function POS({
   const [cat, setCat] = useState<string>("All");
   const [customerId, setCustomerId] = useState<string>("");
   const [discount, setDiscount] = useState<string>("");
+  const [discountType, setDiscountType] = useState<"percent" | "flat">("percent");
   const [paid, setPaid] = useState<string>("");
 
   const categories = useMemo(() => {
