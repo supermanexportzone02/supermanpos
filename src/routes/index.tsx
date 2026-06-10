@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ShoppingCart, Box, Users, BarChart3, IdCard,
   LogOut, Plus, Search, Barcode, Trash2, Edit, Printer, X, Check,
   Zap, ChevronRight, ShirtIcon, CreditCard, Package, Calendar,
-  TrendingUp, AlertTriangle, ShoppingCartIcon,
+  TrendingUp, AlertTriangle, ShoppingCartIcon, Wallet, KeyRound,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,6 +26,7 @@ type Customer = { id: string; name: string; phone: string | null; address: strin
 type Sale = { id: string; invoice_no: string; customer_id: string | null; staff_id: string | null; subtotal: number; discount: number; total: number; paid: number; due: number; created_at: string; customers?: { name: string } | null; staff?: { name: string } | null };
 type SaleItem = { id: string; sale_id: string; product_id: string | null; product_name: string; price: number; quantity: number; total: number };
 type CartItem = { id: string; name: string; price: number; qty: number; stock: number };
+type Expense = { id: string; category: string; amount: number; note: string | null; staff_id: string | null; created_at: string };
 
 const AVATAR_COLORS = ["#4f6ef7", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
 const CATEGORIES = ["Shirt", "Pant", "T-Shirt", "Polo", "Jeans", "Kids Collection"];
@@ -163,7 +164,7 @@ function Login({ staffList, onLogin, reload }: { staffList: Staff[]; onLogin: (s
 }
 
 // ---------- SHELL ----------
-type PageKey = "dashboard" | "sales" | "inventory" | "customers" | "reports" | "staff" | "settings";
+type PageKey = "dashboard" | "sales" | "inventory" | "customers" | "expenses" | "reports" | "staff" | "settings";
 
 function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogout: () => void }) {
   const [page, setPage] = useState<PageKey>("dashboard");
@@ -175,6 +176,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
   const [sales, setSales] = useState<Sale[]>([]);
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [staffAll, setStaffAll] = useState<Staff[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [modal, setModal] = useState<React.ReactNode>(null);
 
   useEffect(() => {
@@ -183,18 +185,20 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
   }, []);
 
   async function loadAll() {
-    const [p, c, s, si, st] = await Promise.all([
+    const [p, c, s, si, st, ex] = await Promise.all([
       supabase.from("products").select("*").order("name"),
       supabase.from("customers").select("*").order("name"),
       supabase.from("sales").select("*, customers(name), staff(name)").order("created_at", { ascending: false }),
       supabase.from("sale_items").select("*"),
       supabase.from("staff").select("*").order("created_at"),
+      supabase.from("expenses").select("*").order("created_at", { ascending: false }),
     ]);
     setProducts(p.data ?? []);
     setCustomers(c.data ?? []);
     setSales((s.data as Sale[]) ?? []);
     setSaleItems(si.data ?? []);
     setStaffAll(st.data ?? []);
+    setExpenses(ex.data ?? []);
   }
 
   useEffect(() => { loadAll(); }, []);
@@ -204,6 +208,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
     sales: "Sales / POS",
     inventory: "Inventory",
     customers: "Customers",
+    expenses: "Daily Expense",
     reports: "Reports",
     staff: "Staff Management",
     settings: "Settings",
@@ -214,6 +219,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
     { key: "sales", label: "Sales / POS", icon: <ShoppingCart /> },
     { key: "inventory", label: "Inventory", icon: <Box /> },
     { key: "customers", label: "Customers", icon: <Users /> },
+    { key: "expenses", label: "Daily Expense", icon: <Wallet /> },
     { key: "reports", label: "Reports", icon: <BarChart3 /> },
     { key: "staff", label: "Staff", icon: <IdCard />, adminOnly: true },
   ];
@@ -229,7 +235,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
           </div>
         </div>
         <nav className="nav">
-          {navItems.filter(n => !n.adminOnly || user.role === "admin").map(n => (
+          {navItems.filter(n => !n.adminOnly || user.role === "admin" || user.role === "owner").map(n => (
             <button key={n.key} className={`nav-item ${page === n.key ? "active" : ""}`} onClick={() => setPage(n.key)}>
               {n.icon}<span>{n.label}</span>
             </button>
@@ -271,7 +277,8 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
           )}
           {page === "inventory" && <Inventory products={products} reload={loadAll} setModal={setModal} />}
           {page === "customers" && <CustomersPage customers={customers} reload={loadAll} setModal={setModal} />}
-          {page === "reports" && <Reports sales={sales} saleItems={saleItems} reload={loadAll} setModal={setModal} />}
+          {page === "expenses" && <ExpensesPage expenses={expenses} user={user} reload={loadAll} setModal={setModal} />}
+          {page === "reports" && <Reports sales={sales} saleItems={saleItems} products={products} expenses={expenses} reload={loadAll} setModal={setModal} />}
           {page === "staff" && <StaffPage staff={staffAll} reload={loadAll} setModal={setModal} />}
         </div>
       </main>
@@ -362,6 +369,7 @@ function POS({
   const [cat, setCat] = useState<string>("All");
   const [customerId, setCustomerId] = useState<string>("");
   const [discount, setDiscount] = useState<string>("");
+  const [discountType, setDiscountType] = useState<"percent" | "flat">("percent");
   const [paid, setPaid] = useState<string>("");
 
   const categories = useMemo(() => {
@@ -405,8 +413,10 @@ function POS({
   function clear() { setCart([]); setDiscount(""); setPaid(""); setCustomerId(""); }
 
   const subtotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
-  const discPct = parseFloat(discount) || 0;
-  const discAmt = Math.round(subtotal * discPct / 100);
+  const discInput = parseFloat(discount) || 0;
+  const discAmt = discountType === "percent"
+    ? Math.round(subtotal * discInput / 100)
+    : Math.min(subtotal, Math.round(discInput));
   const total = subtotal - discAmt;
   const paidAmt = paid === "" ? total : (parseFloat(paid) || 0);
   const due = Math.max(0, total - paidAmt);
@@ -524,15 +534,24 @@ function POS({
             <option value="">— Walk-in Customer —</option>
             {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone || "—"})</option>)}
           </select>
-          <div className="cart-disc-row">
-            <input className="cart-disc-input" type="number" placeholder="Discount %" min={0} max={100}
+          <div className="cart-disc-row" style={{ gap: 6 }}>
+            <select
+              className="cart-disc-input"
+              style={{ maxWidth: 80 }}
+              value={discountType}
+              onChange={(e) => setDiscountType(e.target.value as "percent" | "flat")}
+            >
+              <option value="percent">% Disc</option>
+              <option value="flat">Flat ৳</option>
+            </select>
+            <input className="cart-disc-input" type="number" placeholder={discountType === "percent" ? "Discount %" : "Discount ৳"} min={0}
               value={discount} onChange={(e) => setDiscount(e.target.value)} />
             <input className="cart-disc-input" type="number" placeholder="Paid amount" min={0}
               value={paid} onChange={(e) => setPaid(e.target.value)} />
           </div>
           <div className="cart-totals">
             <div className="cart-row"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-            <div className="cart-row"><span>Discount ({discPct}%)</span><span className="text-danger">- {fmt(discAmt)}</span></div>
+            <div className="cart-row"><span>Discount {discountType === "percent" ? `(${discInput}%)` : "(Flat)"}</span><span className="text-danger">- {fmt(discAmt)}</span></div>
             {due > 0 && <div className="cart-row"><span>Due</span><span className="text-danger">{fmt(due)}</span></div>}
             <div className="cart-row grand"><span>Grand Total</span><span style={{ color: "var(--accent)" }}>{fmt(total)}</span></div>
           </div>
@@ -808,26 +827,35 @@ function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =
 }
 
 // ---------- REPORTS ----------
-function Reports({ sales, saleItems, reload, setModal }: { sales: Sale[]; saleItems: SaleItem[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
+function Reports({ sales, saleItems, products, expenses, reload, setModal }: { sales: Sale[]; saleItems: SaleItem[]; products: Product[]; expenses: Expense[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
   const today = new Date().toISOString().slice(0, 10);
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const weekStart = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
   const [query, setQuery] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const todayTotal = sales.filter(s => s.created_at.startsWith(today)).reduce((a, s) => a + Number(s.total), 0);
   const weekTotal = sales.filter(s => s.created_at >= weekStart).reduce((a, s) => a + Number(s.total), 0);
   const monthTotal = sales.filter(s => s.created_at >= monthStart).reduce((a, s) => a + Number(s.total), 0);
   const allTotal = sales.reduce((a, s) => a + Number(s.total), 0);
 
-  // weekly bar
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  // weekly Saturday→Friday
+  const days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
+  // Compute current week's Saturday (start) — JS getDay: Sun=0,Mon=1,...Sat=6
+  const now0 = new Date();
+  const todayDow = now0.getDay(); // 0..6
+  // days since last Saturday (or today if Sat)
+  const daysSinceSat = (todayDow + 1) % 7; // Sat=6→0, Sun=0→1, ... Fri=5→6
+  const satStart = new Date(now0); satStart.setHours(0, 0, 0, 0); satStart.setDate(satStart.getDate() - daysSinceSat);
   const dayTotals = Array(7).fill(0) as number[];
   for (let i = 0; i < 7; i++) {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const d = new Date(satStart); d.setDate(satStart.getDate() + i);
     const key = d.toISOString().slice(0, 10);
     dayTotals[i] = sales.filter(s => s.created_at.startsWith(key)).reduce((a, s) => a + Number(s.total), 0);
   }
   const maxV = Math.max(...dayTotals, 1);
+  const todayIdx = daysSinceSat; // index of today in the Sat→Fri row
 
   // top products
   const agg: Record<string, { qty: number; total: number }> = {};
@@ -839,13 +867,46 @@ function Reports({ sales, saleItems, reload, setModal }: { sales: Sale[]; saleIt
   const top = Object.entries(agg).sort((a, b) => b[1].total - a[1].total).slice(0, 5);
 
   const q = query.trim().toLowerCase();
+  // date filter
+  const fromTs = fromDate ? new Date(fromDate + "T00:00:00").getTime() : null;
+  const toTs = toDate ? new Date(toDate + "T23:59:59").getTime() : null;
+  const dateFilteredSales = sales.filter(s => {
+    const ts = new Date(s.created_at).getTime();
+    if (fromTs !== null && ts < fromTs) return false;
+    if (toTs !== null && ts > toTs) return false;
+    return true;
+  });
   const filteredSales = q
-    ? sales.filter(s =>
+    ? dateFilteredSales.filter(s =>
         s.invoice_no.toLowerCase().includes(q) ||
         (s.customers?.name || "").toLowerCase().includes(q) ||
         (s.staff?.name || "").toLowerCase().includes(q),
       )
-    : sales;
+    : dateFilteredSales;
+
+  // Profit (Investment vs Sale)
+  const filteredSaleIds = new Set(dateFilteredSales.map(s => s.id));
+  const filteredItems = saleItems.filter(it => filteredSaleIds.has(it.sale_id));
+  const costMap: Record<string, number> = {};
+  products.forEach(p => { costMap[p.id] = Number(p.cost); });
+  let investment = 0, revenue = 0;
+  filteredItems.forEach(it => {
+    const cost = it.product_id ? (costMap[it.product_id] ?? 0) : 0;
+    investment += cost * Number(it.quantity);
+    revenue += Number(it.total);
+  });
+  const grossProfit = revenue - investment;
+  const totalDiscount = dateFilteredSales.reduce((a, s) => a + Number(s.discount), 0);
+  const expensesInRange = expenses.filter(e => {
+    const ts = new Date(e.created_at).getTime();
+    if (fromTs !== null && ts < fromTs) return false;
+    if (toTs !== null && ts > toTs) return false;
+    return true;
+  });
+  const totalExpenses = expensesInRange.reduce((a, e) => a + Number(e.amount), 0);
+  const netProfit = grossProfit - totalDiscount - totalExpenses;
+  const expenseByCat: Record<string, number> = {};
+  expensesInRange.forEach(e => { expenseByCat[e.category] = (expenseByCat[e.category] || 0) + Number(e.amount); });
 
   function viewInvoice(s: Sale) {
     openInvoiceFromSale(s, saleItems, setModal);
@@ -875,20 +936,37 @@ function Reports({ sales, saleItems, reload, setModal }: { sales: Sale[]; saleIt
         <StatCard icon={<TrendingUp size={14} />} label="This Month" value={fmt(monthTotal)} sub="MTD" />
         <StatCard icon={<TrendingUp size={14} />} label="All Time" value={fmt(allTotal)} sub={`${sales.length} sales`} />
       </div>
+
+      <div className="card">
+        <div className="card-title">
+          <span>Date Range Filter</span>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <label style={{ fontSize: 12, color: "var(--text3)" }}>From</label>
+            <input type="date" className="form-input" style={{ width: 150 }} value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            <label style={{ fontSize: 12, color: "var(--text3)" }}>To</label>
+            <input type="date" className="form-input" style={{ width: 150 }} value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            <button className="btn btn-sm" onClick={() => { setFromDate(""); setToDate(""); }}>Clear</button>
+          </div>
+        </div>
+        <div className="stats-grid" style={{ marginTop: 4 }}>
+          <StatCard icon={<TrendingUp size={14} />} label="Investment (Cost)" value={fmt(investment)} sub={`${filteredItems.length} items`} />
+          <StatCard icon={<TrendingUp size={14} />} label="Revenue (Sale)" value={fmt(revenue)} sub={`${dateFilteredSales.length} sales`} />
+          <StatCard icon={<TrendingUp size={14} />} label="Expenses" value={fmt(totalExpenses)} sub={`${expensesInRange.length} entries`} />
+          <StatCard icon={<TrendingUp size={14} />} label={netProfit >= 0 ? "Net Profit" : "Net Loss"} value={fmt(Math.abs(netProfit))} sub={`Gross ${fmt(grossProfit)} − Disc ${fmt(totalDiscount)}`} />
+        </div>
+      </div>
+
       <div className="report-grid">
         <div className="card">
-          <div className="card-title">Weekly Sales</div>
+          <div className="card-title">Weekly Sales (Sat → Fri)</div>
           <div className="bar-chart">
-            {dayTotals.map((v, i) => {
-              const dIdx = (new Date().getDay() - 6 + i + 7) % 7;
-              return (
-                <div className="bar-wrap" key={i}>
-                  <div className="bar-val">{v > 0 ? "৳" + (v / 1000).toFixed(1) + "k" : ""}</div>
-                  <div className={`bar ${i === 6 ? "today" : ""}`} style={{ height: Math.max(4, Math.round(v / maxV * 110)) }} />
-                  <div className="bar-label">{days[dIdx]}</div>
-                </div>
-              );
-            })}
+            {dayTotals.map((v, i) => (
+              <div className="bar-wrap" key={i}>
+                <div className="bar-val">{v > 0 ? "৳" + (v / 1000).toFixed(1) + "k" : ""}</div>
+                <div className={`bar ${i === todayIdx ? "today" : ""}`} style={{ height: Math.max(4, Math.round(v / maxV * 110)) }} />
+                <div className="bar-label">{days[i]}</div>
+              </div>
+            ))}
           </div>
         </div>
         <div className="card">
@@ -903,6 +981,22 @@ function Reports({ sales, saleItems, reload, setModal }: { sales: Sale[]; saleIt
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">Expenses by Category {fromDate || toDate ? "(in range)" : "(all time)"}</div>
+        <table>
+          <thead><tr><th>Category</th><th>Amount</th></tr></thead>
+          <tbody>
+            {Object.entries(expenseByCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
+              <tr key={k}><td>{k}</td><td><strong>{fmt(v)}</strong></td></tr>
+            ))}
+            {Object.keys(expenseByCat).length === 0 && <tr><td colSpan={2} className="empty-row">No expenses</td></tr>}
+            {Object.keys(expenseByCat).length > 0 && (
+              <tr><td><strong>Total</strong></td><td><strong>{fmt(totalExpenses)}</strong></td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
       <div className="card">
         <div className="card-title">
@@ -1020,6 +1114,9 @@ function StaffPage({ staff, reload, setModal }: { staff: Staff[]; reload: () => 
   function openForm() {
     setModal(<StaffForm onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
   }
+  function openChangePin(s: Staff) {
+    setModal(<ChangePinForm staff={s} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+  }
   async function del(s: Staff) {
     if (!confirm(`Delete staff "${s.name}"?`)) return;
     await supabase.from("staff").delete().eq("id", s.id);
@@ -1040,14 +1137,19 @@ function StaffPage({ staff, reload, setModal }: { staff: Staff[]; reload: () => 
           {staff.map(s => (
             <tr key={s.id}>
               <td><strong>{s.name}</strong></td>
-              <td className="text-muted">{s.role}</td>
+              <td className="text-muted" style={{ textTransform: "capitalize" }}>{s.role}</td>
               <td><span style={{ letterSpacing: 4 }}>{s.pin ? "••••" : "—"}</span></td>
               <td>
                 <button onClick={() => toggle(s)} className={`badge ${s.active ? "badge-success" : "badge-danger"}`} style={{ border: "none", cursor: "pointer" }}>
                   {s.active ? "Active" : "Inactive"}
                 </button>
               </td>
-              <td><button className="btn btn-sm btn-danger" onClick={() => del(s)}><Trash2 size={13} /></button></td>
+              <td>
+                <div className="row-actions">
+                  <button className="btn btn-sm" title="Change PIN" onClick={() => openChangePin(s)}><KeyRound size={13} /> PIN</button>
+                  <button className="btn btn-sm btn-danger" onClick={() => del(s)}><Trash2 size={13} /></button>
+                </div>
+              </td>
             </tr>
           ))}
           {staff.length === 0 && <tr><td colSpan={5} className="empty-row">No staff yet</td></tr>}
@@ -1071,6 +1173,7 @@ function StaffForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => P
       <div className="form-grid">
         <div className="form-group"><label className="form-label">Role</label>
           <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="owner">Owner</option>
             <option value="admin">Admin</option>
             <option value="manager">Manager</option>
             <option value="salesman">Salesman</option>
@@ -1087,6 +1190,133 @@ function StaffForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => P
     { label: "Save", primary: true, icon: <Check size={14} />, onClick: save },
   ]} />;
 }
+
+function ChangePinForm({ staff, onClose, onSaved }: { staff: Staff; onClose: () => void; onSaved: () => Promise<void> }) {
+  const [oldPin, setOldPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  async function save() {
+    if (staff.pin && staff.pin !== oldPin) { alert("Current PIN is incorrect"); return; }
+    if (!/^\d{4,6}$/.test(newPin)) { alert("New PIN must be 4-6 digits"); return; }
+    if (newPin !== confirmPin) { alert("New PINs do not match"); return; }
+    await supabase.from("staff").update({ pin: newPin }).eq("id", staff.id);
+    await onSaved();
+  }
+  return <Modal title={`Change PIN — ${staff.name}`} setModal={onClose as any} body={
+    <>
+      {staff.pin && (
+        <div className="form-group"><label className="form-label">Current PIN</label>
+          <input className="form-input" type="password" maxLength={6} value={oldPin} onChange={(e) => setOldPin(e.target.value)} />
+        </div>
+      )}
+      <div className="form-grid">
+        <div className="form-group"><label className="form-label">New PIN (4-6 digits)</label>
+          <input className="form-input" type="password" maxLength={6} value={newPin} onChange={(e) => setNewPin(e.target.value)} />
+        </div>
+        <div className="form-group"><label className="form-label">Confirm New PIN</label>
+          <input className="form-input" type="password" maxLength={6} value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} />
+        </div>
+      </div>
+    </>
+  } actions={[
+    { label: "Cancel", onClick: onClose },
+    { label: "Update PIN", primary: true, icon: <Check size={14} />, onClick: save },
+  ]} />;
+}
+
+// ---------- EXPENSES ----------
+const EXPENSE_CATEGORIES = ["Staff Salary", "Rent", "Utilities", "Transport", "Food", "Marketing", "Maintenance", "Other"];
+
+function ExpensesPage({ expenses, user, reload, setModal }: { expenses: Expense[]; user: Staff; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
+  function openForm() {
+    setModal(<ExpenseForm user={user} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+  }
+  async function del(e: Expense) {
+    if (!confirm("Delete this expense?")) return;
+    await supabase.from("expenses").delete().eq("id", e.id);
+    await reload();
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const todayTotal = expenses.filter(e => e.created_at.startsWith(today)).reduce((a, e) => a + Number(e.amount), 0);
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const monthTotal = expenses.filter(e => e.created_at >= monthStart).reduce((a, e) => a + Number(e.amount), 0);
+  const allTotal = expenses.reduce((a, e) => a + Number(e.amount), 0);
+
+  return (
+    <>
+      <div className="stats-grid">
+        <StatCard icon={<Wallet size={14} />} label="Today's Expense" value={fmt(todayTotal)} sub="today" />
+        <StatCard icon={<Wallet size={14} />} label="This Month" value={fmt(monthTotal)} sub="MTD" />
+        <StatCard icon={<Wallet size={14} />} label="All Time" value={fmt(allTotal)} sub={`${expenses.length} entries`} />
+      </div>
+      <div className="card">
+        <div className="card-title">Daily Expense
+          <button className="btn btn-primary btn-sm" onClick={openForm}><Plus size={14} /> Add Expense</button>
+        </div>
+        <table>
+          <thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Note</th><th>Action</th></tr></thead>
+          <tbody>
+            {expenses.map(e => (
+              <tr key={e.id}>
+                <td style={{ fontSize: 12, color: "var(--text3)" }}>{new Date(e.created_at).toLocaleString()}</td>
+                <td><span className="badge badge-blue">{e.category}</span></td>
+                <td><strong>{fmt(Number(e.amount))}</strong></td>
+                <td>{e.note || "—"}</td>
+                <td><button className="btn btn-sm btn-danger" onClick={() => del(e)}><Trash2 size={13} /></button></td>
+              </tr>
+            ))}
+            {expenses.length === 0 && <tr><td colSpan={5} className="empty-row">No expenses yet</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function ExpenseForm({ user, onClose, onSaved }: { user: Staff; onClose: () => void; onSaved: () => Promise<void> }) {
+  const [catList, setCatList] = useState<string[]>(EXPENSE_CATEGORIES);
+  const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  function handleCat(val: string) {
+    if (val === "__new__") {
+      const nc = prompt("Enter new expense category:");
+      if (nc && nc.trim()) {
+        const t = nc.trim();
+        if (!catList.includes(t)) setCatList([...catList, t]);
+        setCategory(t);
+      }
+      return;
+    }
+    setCategory(val);
+  }
+  async function save() {
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) { alert("Enter a valid amount"); return; }
+    await supabase.from("expenses").insert({ category, amount: amt, note: note.trim() || null, staff_id: user.id });
+    await onSaved();
+  }
+  return <Modal title="Add Expense" setModal={onClose as any} body={
+    <>
+      <div className="form-group"><label className="form-label">Category *</label>
+        <select className="form-select" value={category} onChange={(e) => handleCat(e.target.value)}>
+          {catList.map(c => <option key={c} value={c}>{c}</option>)}
+          <option value="__new__">+ Add new category…</option>
+        </select>
+      </div>
+      <div className="form-group"><label className="form-label">Amount (৳) *</label>
+        <input className="form-input" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
+      </div>
+      <div className="form-group"><label className="form-label">Note</label>
+        <input className="form-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="optional" />
+      </div>
+    </>
+  } actions={[
+    { label: "Cancel", onClick: onClose },
+    { label: "Save", primary: true, icon: <Check size={14} />, onClick: save },
+  ]} />;
+}
+
 
 // ---------- MODAL ----------
 function Modal({
