@@ -164,7 +164,7 @@ function Login({ staffList, onLogin, reload }: { staffList: Staff[]; onLogin: (s
 }
 
 // ---------- SHELL ----------
-type PageKey = "dashboard" | "sales" | "inventory" | "customers" | "reports" | "staff" | "settings";
+type PageKey = "dashboard" | "sales" | "inventory" | "customers" | "expenses" | "reports" | "staff" | "settings";
 
 function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogout: () => void }) {
   const [page, setPage] = useState<PageKey>("dashboard");
