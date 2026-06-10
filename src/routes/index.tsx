@@ -413,8 +413,10 @@ function POS({
   function clear() { setCart([]); setDiscount(""); setPaid(""); setCustomerId(""); }
 
   const subtotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
-  const discPct = parseFloat(discount) || 0;
-  const discAmt = Math.round(subtotal * discPct / 100);
+  const discInput = parseFloat(discount) || 0;
+  const discAmt = discountType === "percent"
+    ? Math.round(subtotal * discInput / 100)
+    : Math.min(subtotal, Math.round(discInput));
   const total = subtotal - discAmt;
   const paidAmt = paid === "" ? total : (parseFloat(paid) || 0);
   const due = Math.max(0, total - paidAmt);
