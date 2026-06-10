@@ -176,6 +176,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
   const [sales, setSales] = useState<Sale[]>([]);
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [staffAll, setStaffAll] = useState<Staff[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [modal, setModal] = useState<React.ReactNode>(null);
 
   useEffect(() => {
@@ -184,18 +185,20 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
   }, []);
 
   async function loadAll() {
-    const [p, c, s, si, st] = await Promise.all([
+    const [p, c, s, si, st, ex] = await Promise.all([
       supabase.from("products").select("*").order("name"),
       supabase.from("customers").select("*").order("name"),
       supabase.from("sales").select("*, customers(name), staff(name)").order("created_at", { ascending: false }),
       supabase.from("sale_items").select("*"),
       supabase.from("staff").select("*").order("created_at"),
+      supabase.from("expenses").select("*").order("created_at", { ascending: false }),
     ]);
     setProducts(p.data ?? []);
     setCustomers(c.data ?? []);
     setSales((s.data as Sale[]) ?? []);
     setSaleItems(si.data ?? []);
     setStaffAll(st.data ?? []);
+    setExpenses(ex.data ?? []);
   }
 
   useEffect(() => { loadAll(); }, []);
@@ -205,6 +208,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
     sales: "Sales / POS",
     inventory: "Inventory",
     customers: "Customers",
+    expenses: "Daily Expense",
     reports: "Reports",
     staff: "Staff Management",
     settings: "Settings",
@@ -215,6 +219,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
     { key: "sales", label: "Sales / POS", icon: <ShoppingCart /> },
     { key: "inventory", label: "Inventory", icon: <Box /> },
     { key: "customers", label: "Customers", icon: <Users /> },
+    { key: "expenses", label: "Daily Expense", icon: <Wallet /> },
     { key: "reports", label: "Reports", icon: <BarChart3 /> },
     { key: "staff", label: "Staff", icon: <IdCard />, adminOnly: true },
   ];
