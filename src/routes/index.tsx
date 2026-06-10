@@ -26,6 +26,7 @@ type Customer = { id: string; name: string; phone: string | null; address: strin
 type Sale = { id: string; invoice_no: string; customer_id: string | null; staff_id: string | null; subtotal: number; discount: number; total: number; paid: number; due: number; created_at: string; customers?: { name: string } | null; staff?: { name: string } | null };
 type SaleItem = { id: string; sale_id: string; product_id: string | null; product_name: string; price: number; quantity: number; total: number };
 type CartItem = { id: string; name: string; price: number; qty: number; stock: number };
+type Expense = { id: string; category: string; amount: number; note: string | null; staff_id: string | null; created_at: string };
 
 const AVATAR_COLORS = ["#4f6ef7", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
 const CATEGORIES = ["Shirt", "Pant", "T-Shirt", "Polo", "Jeans", "Kids Collection"];
