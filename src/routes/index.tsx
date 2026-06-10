@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ShoppingCart, Box, Users, BarChart3, IdCard,
   LogOut, Plus, Search, Barcode, Trash2, Edit, Printer, X, Check,
   Zap, ChevronRight, ShirtIcon, CreditCard, Package, Calendar,
-  TrendingUp, AlertTriangle, ShoppingCartIcon,
+  TrendingUp, AlertTriangle, ShoppingCartIcon, Wallet, KeyRound,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
