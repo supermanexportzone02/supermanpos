@@ -936,20 +936,37 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
         <StatCard icon={<TrendingUp size={14} />} label="This Month" value={fmt(monthTotal)} sub="MTD" />
         <StatCard icon={<TrendingUp size={14} />} label="All Time" value={fmt(allTotal)} sub={`${sales.length} sales`} />
       </div>
+
+      <div className="card">
+        <div className="card-title">
+          <span>Date Range Filter</span>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <label style={{ fontSize: 12, color: "var(--text3)" }}>From</label>
+            <input type="date" className="form-input" style={{ width: 150 }} value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            <label style={{ fontSize: 12, color: "var(--text3)" }}>To</label>
+            <input type="date" className="form-input" style={{ width: 150 }} value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            <button className="btn btn-sm" onClick={() => { setFromDate(""); setToDate(""); }}>Clear</button>
+          </div>
+        </div>
+        <div className="stats-grid" style={{ marginTop: 4 }}>
+          <StatCard icon={<TrendingUp size={14} />} label="Investment (Cost)" value={fmt(investment)} sub={`${filteredItems.length} items`} />
+          <StatCard icon={<TrendingUp size={14} />} label="Revenue (Sale)" value={fmt(revenue)} sub={`${dateFilteredSales.length} sales`} />
+          <StatCard icon={<TrendingUp size={14} />} label="Expenses" value={fmt(totalExpenses)} sub={`${expensesInRange.length} entries`} />
+          <StatCard icon={<TrendingUp size={14} />} label={netProfit >= 0 ? "Net Profit" : "Net Loss"} value={fmt(Math.abs(netProfit))} sub={`Gross ${fmt(grossProfit)} − Disc ${fmt(totalDiscount)}`} />
+        </div>
+      </div>
+
       <div className="report-grid">
         <div className="card">
-          <div className="card-title">Weekly Sales</div>
+          <div className="card-title">Weekly Sales (Sat → Fri)</div>
           <div className="bar-chart">
-            {dayTotals.map((v, i) => {
-              const dIdx = (new Date().getDay() - 6 + i + 7) % 7;
-              return (
-                <div className="bar-wrap" key={i}>
-                  <div className="bar-val">{v > 0 ? "৳" + (v / 1000).toFixed(1) + "k" : ""}</div>
-                  <div className={`bar ${i === 6 ? "today" : ""}`} style={{ height: Math.max(4, Math.round(v / maxV * 110)) }} />
-                  <div className="bar-label">{days[dIdx]}</div>
-                </div>
-              );
-            })}
+            {dayTotals.map((v, i) => (
+              <div className="bar-wrap" key={i}>
+                <div className="bar-val">{v > 0 ? "৳" + (v / 1000).toFixed(1) + "k" : ""}</div>
+                <div className={`bar ${i === todayIdx ? "today" : ""}`} style={{ height: Math.max(4, Math.round(v / maxV * 110)) }} />
+                <div className="bar-label">{days[i]}</div>
+              </div>
+            ))}
           </div>
         </div>
         <div className="card">
@@ -964,6 +981,22 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">Expenses by Category {fromDate || toDate ? "(in range)" : "(all time)"}</div>
+        <table>
+          <thead><tr><th>Category</th><th>Amount</th></tr></thead>
+          <tbody>
+            {Object.entries(expenseByCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
+              <tr key={k}><td>{k}</td><td><strong>{fmt(v)}</strong></td></tr>
+            ))}
+            {Object.keys(expenseByCat).length === 0 && <tr><td colSpan={2} className="empty-row">No expenses</td></tr>}
+            {Object.keys(expenseByCat).length > 0 && (
+              <tr><td><strong>Total</strong></td><td><strong>{fmt(totalExpenses)}</strong></td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
       <div className="card">
         <div className="card-title">
