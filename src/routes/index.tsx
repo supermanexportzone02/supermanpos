@@ -867,13 +867,46 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
   const top = Object.entries(agg).sort((a, b) => b[1].total - a[1].total).slice(0, 5);
 
   const q = query.trim().toLowerCase();
+  // date filter
+  const fromTs = fromDate ? new Date(fromDate + "T00:00:00").getTime() : null;
+  const toTs = toDate ? new Date(toDate + "T23:59:59").getTime() : null;
+  const dateFilteredSales = sales.filter(s => {
+    const ts = new Date(s.created_at).getTime();
+    if (fromTs !== null && ts < fromTs) return false;
+    if (toTs !== null && ts > toTs) return false;
+    return true;
+  });
   const filteredSales = q
-    ? sales.filter(s =>
+    ? dateFilteredSales.filter(s =>
         s.invoice_no.toLowerCase().includes(q) ||
         (s.customers?.name || "").toLowerCase().includes(q) ||
         (s.staff?.name || "").toLowerCase().includes(q),
       )
-    : sales;
+    : dateFilteredSales;
+
+  // Profit (Investment vs Sale)
+  const filteredSaleIds = new Set(dateFilteredSales.map(s => s.id));
+  const filteredItems = saleItems.filter(it => filteredSaleIds.has(it.sale_id));
+  const costMap: Record<string, number> = {};
+  products.forEach(p => { costMap[p.id] = Number(p.cost); });
+  let investment = 0, revenue = 0;
+  filteredItems.forEach(it => {
+    const cost = it.product_id ? (costMap[it.product_id] ?? 0) : 0;
+    investment += cost * Number(it.quantity);
+    revenue += Number(it.total);
+  });
+  const grossProfit = revenue - investment;
+  const totalDiscount = dateFilteredSales.reduce((a, s) => a + Number(s.discount), 0);
+  const expensesInRange = expenses.filter(e => {
+    const ts = new Date(e.created_at).getTime();
+    if (fromTs !== null && ts < fromTs) return false;
+    if (toTs !== null && ts > toTs) return false;
+    return true;
+  });
+  const totalExpenses = expensesInRange.reduce((a, e) => a + Number(e.amount), 0);
+  const netProfit = grossProfit - totalDiscount - totalExpenses;
+  const expenseByCat: Record<string, number> = {};
+  expensesInRange.forEach(e => { expenseByCat[e.category] = (expenseByCat[e.category] || 0) + Number(e.amount); });
 
   function viewInvoice(s: Sale) {
     openInvoiceFromSale(s, saleItems, setModal);
