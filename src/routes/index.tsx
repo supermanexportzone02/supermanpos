@@ -534,15 +534,24 @@ function POS({
             <option value="">— Walk-in Customer —</option>
             {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone || "—"})</option>)}
           </select>
-          <div className="cart-disc-row">
-            <input className="cart-disc-input" type="number" placeholder="Discount %" min={0} max={100}
+          <div className="cart-disc-row" style={{ gap: 6 }}>
+            <select
+              className="cart-disc-input"
+              style={{ maxWidth: 80 }}
+              value={discountType}
+              onChange={(e) => setDiscountType(e.target.value as "percent" | "flat")}
+            >
+              <option value="percent">% Disc</option>
+              <option value="flat">Flat ৳</option>
+            </select>
+            <input className="cart-disc-input" type="number" placeholder={discountType === "percent" ? "Discount %" : "Discount ৳"} min={0}
               value={discount} onChange={(e) => setDiscount(e.target.value)} />
             <input className="cart-disc-input" type="number" placeholder="Paid amount" min={0}
               value={paid} onChange={(e) => setPaid(e.target.value)} />
           </div>
           <div className="cart-totals">
             <div className="cart-row"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-            <div className="cart-row"><span>Discount ({discPct}%)</span><span className="text-danger">- {fmt(discAmt)}</span></div>
+            <div className="cart-row"><span>Discount {discountType === "percent" ? `(${discInput}%)` : "(Flat)"}</span><span className="text-danger">- {fmt(discAmt)}</span></div>
             {due > 0 && <div className="cart-row"><span>Due</span><span className="text-danger">{fmt(due)}</span></div>}
             <div className="cart-row grand"><span>Grand Total</span><span style={{ color: "var(--accent)" }}>{fmt(total)}</span></div>
           </div>
