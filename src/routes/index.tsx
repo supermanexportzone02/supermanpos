@@ -827,26 +827,35 @@ function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =
 }
 
 // ---------- REPORTS ----------
-function Reports({ sales, saleItems, reload, setModal }: { sales: Sale[]; saleItems: SaleItem[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
+function Reports({ sales, saleItems, products, expenses, reload, setModal }: { sales: Sale[]; saleItems: SaleItem[]; products: Product[]; expenses: Expense[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
   const today = new Date().toISOString().slice(0, 10);
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const weekStart = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
   const [query, setQuery] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const todayTotal = sales.filter(s => s.created_at.startsWith(today)).reduce((a, s) => a + Number(s.total), 0);
   const weekTotal = sales.filter(s => s.created_at >= weekStart).reduce((a, s) => a + Number(s.total), 0);
   const monthTotal = sales.filter(s => s.created_at >= monthStart).reduce((a, s) => a + Number(s.total), 0);
   const allTotal = sales.reduce((a, s) => a + Number(s.total), 0);
 
-  // weekly bar
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  // weekly Saturday→Friday
+  const days = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
+  // Compute current week's Saturday (start) — JS getDay: Sun=0,Mon=1,...Sat=6
+  const now0 = new Date();
+  const todayDow = now0.getDay(); // 0..6
+  // days since last Saturday (or today if Sat)
+  const daysSinceSat = (todayDow + 1) % 7; // Sat=6→0, Sun=0→1, ... Fri=5→6
+  const satStart = new Date(now0); satStart.setHours(0, 0, 0, 0); satStart.setDate(satStart.getDate() - daysSinceSat);
   const dayTotals = Array(7).fill(0) as number[];
   for (let i = 0; i < 7; i++) {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const d = new Date(satStart); d.setDate(satStart.getDate() + i);
     const key = d.toISOString().slice(0, 10);
     dayTotals[i] = sales.filter(s => s.created_at.startsWith(key)).reduce((a, s) => a + Number(s.total), 0);
   }
   const maxV = Math.max(...dayTotals, 1);
+  const todayIdx = daysSinceSat; // index of today in the Sat→Fri row
 
   // top products
   const agg: Record<string, { qty: number; total: number }> = {};
