@@ -235,7 +235,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
           </div>
         </div>
         <nav className="nav">
-          {navItems.filter(n => !n.adminOnly || user.role === "admin").map(n => (
+          {navItems.filter(n => !n.adminOnly || user.role === "admin" || user.role === "owner").map(n => (
             <button key={n.key} className={`nav-item ${page === n.key ? "active" : ""}`} onClick={() => setPage(n.key)}>
               {n.icon}<span>{n.label}</span>
             </button>
