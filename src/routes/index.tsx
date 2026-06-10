@@ -1114,6 +1114,9 @@ function StaffPage({ staff, reload, setModal }: { staff: Staff[]; reload: () => 
   function openForm() {
     setModal(<StaffForm onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
   }
+  function openChangePin(s: Staff) {
+    setModal(<ChangePinForm staff={s} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+  }
   async function del(s: Staff) {
     if (!confirm(`Delete staff "${s.name}"?`)) return;
     await supabase.from("staff").delete().eq("id", s.id);
@@ -1134,14 +1137,19 @@ function StaffPage({ staff, reload, setModal }: { staff: Staff[]; reload: () => 
           {staff.map(s => (
             <tr key={s.id}>
               <td><strong>{s.name}</strong></td>
-              <td className="text-muted">{s.role}</td>
+              <td className="text-muted" style={{ textTransform: "capitalize" }}>{s.role}</td>
               <td><span style={{ letterSpacing: 4 }}>{s.pin ? "••••" : "—"}</span></td>
               <td>
                 <button onClick={() => toggle(s)} className={`badge ${s.active ? "badge-success" : "badge-danger"}`} style={{ border: "none", cursor: "pointer" }}>
                   {s.active ? "Active" : "Inactive"}
                 </button>
               </td>
-              <td><button className="btn btn-sm btn-danger" onClick={() => del(s)}><Trash2 size={13} /></button></td>
+              <td>
+                <div className="row-actions">
+                  <button className="btn btn-sm" title="Change PIN" onClick={() => openChangePin(s)}><KeyRound size={13} /> PIN</button>
+                  <button className="btn btn-sm btn-danger" onClick={() => del(s)}><Trash2 size={13} /></button>
+                </div>
+              </td>
             </tr>
           ))}
           {staff.length === 0 && <tr><td colSpan={5} className="empty-row">No staff yet</td></tr>}
@@ -1165,6 +1173,7 @@ function StaffForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => P
       <div className="form-grid">
         <div className="form-group"><label className="form-label">Role</label>
           <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="owner">Owner</option>
             <option value="admin">Admin</option>
             <option value="manager">Manager</option>
             <option value="salesman">Salesman</option>
@@ -1181,6 +1190,133 @@ function StaffForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => P
     { label: "Save", primary: true, icon: <Check size={14} />, onClick: save },
   ]} />;
 }
+
+function ChangePinForm({ staff, onClose, onSaved }: { staff: Staff; onClose: () => void; onSaved: () => Promise<void> }) {
+  const [oldPin, setOldPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  async function save() {
+    if (staff.pin && staff.pin !== oldPin) { alert("Current PIN is incorrect"); return; }
+    if (!/^\d{4,6}$/.test(newPin)) { alert("New PIN must be 4-6 digits"); return; }
+    if (newPin !== confirmPin) { alert("New PINs do not match"); return; }
+    await supabase.from("staff").update({ pin: newPin }).eq("id", staff.id);
+    await onSaved();
+  }
+  return <Modal title={`Change PIN — ${staff.name}`} setModal={onClose as any} body={
+    <>
+      {staff.pin && (
+        <div className="form-group"><label className="form-label">Current PIN</label>
+          <input className="form-input" type="password" maxLength={6} value={oldPin} onChange={(e) => setOldPin(e.target.value)} />
+        </div>
+      )}
+      <div className="form-grid">
+        <div className="form-group"><label className="form-label">New PIN (4-6 digits)</label>
+          <input className="form-input" type="password" maxLength={6} value={newPin} onChange={(e) => setNewPin(e.target.value)} />
+        </div>
+        <div className="form-group"><label className="form-label">Confirm New PIN</label>
+          <input className="form-input" type="password" maxLength={6} value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} />
+        </div>
+      </div>
+    </>
+  } actions={[
+    { label: "Cancel", onClick: onClose },
+    { label: "Update PIN", primary: true, icon: <Check size={14} />, onClick: save },
+  ]} />;
+}
+
+// ---------- EXPENSES ----------
+const EXPENSE_CATEGORIES = ["Staff Salary", "Rent", "Utilities", "Transport", "Food", "Marketing", "Maintenance", "Other"];
+
+function ExpensesPage({ expenses, user, reload, setModal }: { expenses: Expense[]; user: Staff; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
+  function openForm() {
+    setModal(<ExpenseForm user={user} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+  }
+  async function del(e: Expense) {
+    if (!confirm("Delete this expense?")) return;
+    await supabase.from("expenses").delete().eq("id", e.id);
+    await reload();
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const todayTotal = expenses.filter(e => e.created_at.startsWith(today)).reduce((a, e) => a + Number(e.amount), 0);
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const monthTotal = expenses.filter(e => e.created_at >= monthStart).reduce((a, e) => a + Number(e.amount), 0);
+  const allTotal = expenses.reduce((a, e) => a + Number(e.amount), 0);
+
+  return (
+    <>
+      <div className="stats-grid">
+        <StatCard icon={<Wallet size={14} />} label="Today's Expense" value={fmt(todayTotal)} sub="today" />
+        <StatCard icon={<Wallet size={14} />} label="This Month" value={fmt(monthTotal)} sub="MTD" />
+        <StatCard icon={<Wallet size={14} />} label="All Time" value={fmt(allTotal)} sub={`${expenses.length} entries`} />
+      </div>
+      <div className="card">
+        <div className="card-title">Daily Expense
+          <button className="btn btn-primary btn-sm" onClick={openForm}><Plus size={14} /> Add Expense</button>
+        </div>
+        <table>
+          <thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Note</th><th>Action</th></tr></thead>
+          <tbody>
+            {expenses.map(e => (
+              <tr key={e.id}>
+                <td style={{ fontSize: 12, color: "var(--text3)" }}>{new Date(e.created_at).toLocaleString()}</td>
+                <td><span className="badge badge-blue">{e.category}</span></td>
+                <td><strong>{fmt(Number(e.amount))}</strong></td>
+                <td>{e.note || "—"}</td>
+                <td><button className="btn btn-sm btn-danger" onClick={() => del(e)}><Trash2 size={13} /></button></td>
+              </tr>
+            ))}
+            {expenses.length === 0 && <tr><td colSpan={5} className="empty-row">No expenses yet</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function ExpenseForm({ user, onClose, onSaved }: { user: Staff; onClose: () => void; onSaved: () => Promise<void> }) {
+  const [catList, setCatList] = useState<string[]>(EXPENSE_CATEGORIES);
+  const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  function handleCat(val: string) {
+    if (val === "__new__") {
+      const nc = prompt("Enter new expense category:");
+      if (nc && nc.trim()) {
+        const t = nc.trim();
+        if (!catList.includes(t)) setCatList([...catList, t]);
+        setCategory(t);
+      }
+      return;
+    }
+    setCategory(val);
+  }
+  async function save() {
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) { alert("Enter a valid amount"); return; }
+    await supabase.from("expenses").insert({ category, amount: amt, note: note.trim() || null, staff_id: user.id });
+    await onSaved();
+  }
+  return <Modal title="Add Expense" setModal={onClose as any} body={
+    <>
+      <div className="form-group"><label className="form-label">Category *</label>
+        <select className="form-select" value={category} onChange={(e) => handleCat(e.target.value)}>
+          {catList.map(c => <option key={c} value={c}>{c}</option>)}
+          <option value="__new__">+ Add new category…</option>
+        </select>
+      </div>
+      <div className="form-group"><label className="form-label">Amount (৳) *</label>
+        <input className="form-input" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
+      </div>
+      <div className="form-group"><label className="form-label">Note</label>
+        <input className="form-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="optional" />
+      </div>
+    </>
+  } actions={[
+    { label: "Cancel", onClick: onClose },
+    { label: "Save", primary: true, icon: <Check size={14} />, onClick: save },
+  ]} />;
+}
+
 
 // ---------- MODAL ----------
 function Modal({
