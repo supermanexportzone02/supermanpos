@@ -344,9 +344,10 @@ function Dashboard({ products, customers, sales }: { products: Product[]; custom
   );
 }
 
-function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub: string }) {
+function StatCard({ icon, label, value, sub, actions }: { icon: React.ReactNode; label: React.ReactNode; value: string; sub: string; actions?: React.ReactNode }) {
   return (
-    <div className="stat-card">
+    <div className="stat-card" style={{ position: "relative" }}>
+      {actions && <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4 }}>{actions}</div>}
       <div className="stat-label">{icon}{label}</div>
       <div className="stat-value">{value}</div>
       <div className="stat-sub">{sub}</div>
