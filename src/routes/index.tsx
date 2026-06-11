@@ -155,9 +155,6 @@ function Login({ staffList, onLogin, reload }: { staffList: Staff[]; onLogin: (s
             {error && <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 6, textAlign: "center" }}>{error}</div>}
           </div>
         )}
-        <div style={{ marginTop: 16, fontSize: 11, color: "var(--text3)", textAlign: "center" }}>
-          Default: Admin / PIN <b>1234</b>
-        </div>
       </div>
     </div>
   );
