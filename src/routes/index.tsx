@@ -3,8 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LayoutDashboard, ShoppingCart, Box, Users, BarChart3, IdCard,
   LogOut, Plus, Search, Barcode, Trash2, Edit, Printer, X, Check,
-  Zap, ChevronRight, ShirtIcon, CreditCard, Package, Calendar,
+  Zap, ChevronRight, ChevronLeft, ShirtIcon, CreditCard, Package, Calendar,
   TrendingUp, AlertTriangle, ShoppingCartIcon, Wallet, KeyRound,
+  FileSpreadsheet, FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -343,9 +344,10 @@ function Dashboard({ products, customers, sales }: { products: Product[]; custom
   );
 }
 
-function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub: string }) {
+function StatCard({ icon, label, value, sub, actions }: { icon: React.ReactNode; label: React.ReactNode; value: string; sub: string; actions?: React.ReactNode }) {
   return (
-    <div className="stat-card">
+    <div className="stat-card" style={{ position: "relative" }}>
+      {actions && <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4 }}>{actions}</div>}
       <div className="stat-label">{icon}{label}</div>
       <div className="stat-value">{value}</div>
       <div className="stat-sub">{sub}</div>
@@ -826,7 +828,13 @@ function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =
 // ---------- REPORTS ----------
 function Reports({ sales, saleItems, products, expenses, reload, setModal }: { sales: Sale[]; saleItems: SaleItem[]; products: Product[]; expenses: Expense[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
   const today = new Date().toISOString().slice(0, 10);
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const [monthOffset, setMonthOffset] = useState(0);
+  const monthDate = new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1);
+  const monthStartDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const monthEndDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+  const monthStart = monthStartDate.toISOString();
+  const monthEnd = monthEndDate.toISOString();
+  const monthLabel = monthDate.toLocaleString("en-US", { month: "long", year: "numeric" });
   const weekStart = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
   const [query, setQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -834,7 +842,8 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
 
   const todayTotal = sales.filter(s => s.created_at.startsWith(today)).reduce((a, s) => a + Number(s.total), 0);
   const weekTotal = sales.filter(s => s.created_at >= weekStart).reduce((a, s) => a + Number(s.total), 0);
-  const monthTotal = sales.filter(s => s.created_at >= monthStart).reduce((a, s) => a + Number(s.total), 0);
+  const monthSales = sales.filter(s => s.created_at >= monthStart && s.created_at < monthEnd);
+  const monthTotal = monthSales.reduce((a, s) => a + Number(s.total), 0);
   const allTotal = sales.reduce((a, s) => a + Number(s.total), 0);
 
   // weekly Saturday→Friday
@@ -925,13 +934,7 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
     await reload();
   }
 
-  function getRangeSales(period: "week" | "month" | "all") {
-    if (period === "all") return sales;
-    if (period === "week") return sales.filter(s => s.created_at >= weekStart);
-    return sales.filter(s => s.created_at >= monthStart);
-  }
-  function exportExcel(period: "week" | "month" | "all", label: string) {
-    const rows = getRangeSales(period);
+  function exportExcel(rows: Sale[], label: string) {
     const header = ["Invoice", "Date", "Customer", "Staff", "Subtotal", "Discount", "Total", "Paid", "Due"];
     const csv = [header.join(",")].concat(
       rows.map(s => [
@@ -952,8 +955,7 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
     const a = document.createElement("a"); a.href = url; a.download = `Sales-${label}-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
     URL.revokeObjectURL(url);
   }
-  function exportPDF(period: "week" | "month" | "all", label: string) {
-    const rows = getRangeSales(period);
+  function exportPDF(rows: Sale[], label: string) {
     const total = rows.reduce((a, s) => a + Number(s.total), 0);
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) return;
@@ -994,30 +996,43 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
     w.document.close();
   }
 
+  const exportBtnStyle: React.CSSProperties = { background: "transparent", border: "1px solid var(--border)", borderRadius: 6, padding: 4, cursor: "pointer", display: "inline-flex", alignItems: "center", color: "var(--text2)" };
+  function ExportIcons({ rows, label }: { rows: Sale[]; label: string }) {
+    return (
+      <>
+        <button type="button" title={`Download ${label} Excel`} style={exportBtnStyle} onClick={() => exportExcel(rows, label)}><FileSpreadsheet size={14} /></button>
+        <button type="button" title={`Download ${label} PDF`} style={exportBtnStyle} onClick={() => exportPDF(rows, label)}><FileText size={14} /></button>
+      </>
+    );
+  }
+
+  const todaySales = sales.filter(s => s.created_at.startsWith(today));
+  const weekSales = sales.filter(s => s.created_at >= weekStart);
+  const rangeLabel = (fromDate || toDate) ? `${fromDate || "…"}_to_${toDate || "…"}` : "All";
+
   return (
     <>
       <div className="stats-grid">
-        <StatCard icon={<TrendingUp size={14} />} label="Today" value={fmt(todayTotal)} sub="sales" />
-        <StatCard icon={<TrendingUp size={14} />} label="This Week" value={fmt(weekTotal)} sub="last 7 days" />
-        <StatCard icon={<TrendingUp size={14} />} label="This Month" value={fmt(monthTotal)} sub="MTD" />
-        <StatCard icon={<TrendingUp size={14} />} label="All Time" value={fmt(allTotal)} sub={`${sales.length} sales`} />
+        <StatCard icon={<TrendingUp size={14} />} label="Today" value={fmt(todayTotal)} sub="sales"
+          actions={<ExportIcons rows={todaySales} label={`Today-${today}`} />} />
+        <StatCard icon={<TrendingUp size={14} />} label="This Week" value={fmt(weekTotal)} sub="last 7 days"
+          actions={<ExportIcons rows={weekSales} label="This-Week" />} />
+        <StatCard
+          icon={<Calendar size={14} />}
+          label={
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <button type="button" style={exportBtnStyle} title="Previous month" onClick={() => setMonthOffset(o => o - 1)}><ChevronLeft size={12} /></button>
+              <span>{monthLabel}</span>
+              <button type="button" style={{ ...exportBtnStyle, opacity: monthOffset >= 0 ? 0.4 : 1 }} title="Next month" disabled={monthOffset >= 0} onClick={() => setMonthOffset(o => Math.min(0, o + 1))}><ChevronRight size={12} /></button>
+            </span>
+          }
+          value={fmt(monthTotal)}
+          sub={`${monthSales.length} sales`}
+          actions={<ExportIcons rows={monthSales} label={monthLabel.replace(/\s+/g, "-")} />}
+        />
+        <StatCard icon={<TrendingUp size={14} />} label="All Time" value={fmt(allTotal)} sub={`${sales.length} sales`}
+          actions={<ExportIcons rows={sales} label="All-Time" />} />
       </div>
-
-      <div className="card">
-        <div className="card-title"><span>Export Reports</span></div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
-          {([["week", "This Week"], ["month", "This Month"], ["all", "All Time"]] as const).map(([k, lbl]) => (
-            <div key={k} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>{lbl}</div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button className="btn btn-sm" onClick={() => exportExcel(k, lbl)} style={{ flex: 1 }}>Excel</button>
-                <button className="btn btn-sm btn-primary" onClick={() => exportPDF(k, lbl)} style={{ flex: 1 }}>PDF</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
 
       <div className="card">
         <div className="card-title">
@@ -1028,6 +1043,9 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
             <label style={{ fontSize: 12, color: "var(--text3)" }}>To</label>
             <input type="date" className="form-input" style={{ width: 150 }} value={toDate} onChange={(e) => setToDate(e.target.value)} />
             <button className="btn btn-sm" onClick={() => { setFromDate(""); setToDate(""); }}>Clear</button>
+            <span style={{ display: "inline-flex", gap: 4, marginLeft: 4 }}>
+              <ExportIcons rows={dateFilteredSales} label={`Range-${rangeLabel}`} />
+            </span>
           </div>
         </div>
         <div className="stats-grid" style={{ marginTop: 4 }}>
