@@ -81,10 +81,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Superman Export Zone POS & Billing Software" },
       { name: "author", content: "Superman Export Zone" },
       { property: "og:title", content: "Superman Export Zone — POS" },
-      { property: "og:description", content: "POS & Billing System" },
+      { property: "og:description", content: "Superman Export Zone POS & Billing Software" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Superman Export Zone — POS" },
+      { name: "twitter:description", content: "Superman Export Zone POS & Billing Software" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bee6f4eb-d151-47a5-9d5c-b1e3f56df2f9/id-preview-5009c4fd--4c64127d-213d-40bc-9ce0-d0682728d2e3.lovable.app-1781159656781.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bee6f4eb-d151-47a5-9d5c-b1e3f56df2f9/id-preview-5009c4fd--4c64127d-213d-40bc-9ce0-d0682728d2e3.lovable.app-1781159656781.png" },
     ],
     links: [
       {
