@@ -1013,27 +1013,26 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
   return (
     <>
       <div className="stats-grid">
-        <StatCard icon={<TrendingUp size={14} />} label="Today" value={fmt(todayTotal)} sub="sales" />
-        <StatCard icon={<TrendingUp size={14} />} label="This Week" value={fmt(weekTotal)} sub="last 7 days" />
-        <StatCard icon={<TrendingUp size={14} />} label="This Month" value={fmt(monthTotal)} sub="MTD" />
-        <StatCard icon={<TrendingUp size={14} />} label="All Time" value={fmt(allTotal)} sub={`${sales.length} sales`} />
+        <StatCard icon={<TrendingUp size={14} />} label="Today" value={fmt(todayTotal)} sub="sales"
+          actions={<ExportIcons rows={todaySales} label={`Today-${today}`} />} />
+        <StatCard icon={<TrendingUp size={14} />} label="This Week" value={fmt(weekTotal)} sub="last 7 days"
+          actions={<ExportIcons rows={weekSales} label="This-Week" />} />
+        <StatCard
+          icon={<Calendar size={14} />}
+          label={
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <button type="button" style={exportBtnStyle} title="Previous month" onClick={() => setMonthOffset(o => o - 1)}><ChevronLeft size={12} /></button>
+              <span>{monthLabel}</span>
+              <button type="button" style={{ ...exportBtnStyle, opacity: monthOffset >= 0 ? 0.4 : 1 }} title="Next month" disabled={monthOffset >= 0} onClick={() => setMonthOffset(o => Math.min(0, o + 1))}><ChevronRight size={12} /></button>
+            </span>
+          }
+          value={fmt(monthTotal)}
+          sub={`${monthSales.length} sales`}
+          actions={<ExportIcons rows={monthSales} label={monthLabel.replace(/\s+/g, "-")} />}
+        />
+        <StatCard icon={<TrendingUp size={14} />} label="All Time" value={fmt(allTotal)} sub={`${sales.length} sales`}
+          actions={<ExportIcons rows={sales} label="All-Time" />} />
       </div>
-
-      <div className="card">
-        <div className="card-title"><span>Export Reports</span></div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
-          {([["week", "This Week"], ["month", "This Month"], ["all", "All Time"]] as const).map(([k, lbl]) => (
-            <div key={k} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>{lbl}</div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button className="btn btn-sm" onClick={() => exportExcel(k, lbl)} style={{ flex: 1 }}>Excel</button>
-                <button className="btn btn-sm btn-primary" onClick={() => exportPDF(k, lbl)} style={{ flex: 1 }}>PDF</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
 
       <div className="card">
         <div className="card-title">
@@ -1044,6 +1043,9 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
             <label style={{ fontSize: 12, color: "var(--text3)" }}>To</label>
             <input type="date" className="form-input" style={{ width: 150 }} value={toDate} onChange={(e) => setToDate(e.target.value)} />
             <button className="btn btn-sm" onClick={() => { setFromDate(""); setToDate(""); }}>Clear</button>
+            <span style={{ display: "inline-flex", gap: 4, marginLeft: 4 }}>
+              <ExportIcons rows={dateFilteredSales} label={`Range-${rangeLabel}`} />
+            </span>
           </div>
         </div>
         <div className="stats-grid" style={{ marginTop: 4 }}>
