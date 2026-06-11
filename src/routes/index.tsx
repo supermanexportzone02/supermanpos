@@ -3,8 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LayoutDashboard, ShoppingCart, Box, Users, BarChart3, IdCard,
   LogOut, Plus, Search, Barcode, Trash2, Edit, Printer, X, Check,
-  Zap, ChevronRight, ShirtIcon, CreditCard, Package, Calendar,
+  Zap, ChevronRight, ChevronLeft, ShirtIcon, CreditCard, Package, Calendar,
   TrendingUp, AlertTriangle, ShoppingCartIcon, Wallet, KeyRound,
+  FileSpreadsheet, FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
