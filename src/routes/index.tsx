@@ -934,13 +934,7 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
     await reload();
   }
 
-  function getRangeSales(period: "week" | "month" | "all") {
-    if (period === "all") return sales;
-    if (period === "week") return sales.filter(s => s.created_at >= weekStart);
-    return sales.filter(s => s.created_at >= monthStart);
-  }
-  function exportExcel(period: "week" | "month" | "all", label: string) {
-    const rows = getRangeSales(period);
+  function exportExcel(rows: Sale[], label: string) {
     const header = ["Invoice", "Date", "Customer", "Staff", "Subtotal", "Discount", "Total", "Paid", "Due"];
     const csv = [header.join(",")].concat(
       rows.map(s => [
@@ -961,8 +955,7 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
     const a = document.createElement("a"); a.href = url; a.download = `Sales-${label}-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
     URL.revokeObjectURL(url);
   }
-  function exportPDF(period: "week" | "month" | "all", label: string) {
-    const rows = getRangeSales(period);
+  function exportPDF(rows: Sale[], label: string) {
     const total = rows.reduce((a, s) => a + Number(s.total), 0);
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) return;
@@ -1002,6 +995,20 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
       </body></html>`);
     w.document.close();
   }
+
+  const exportBtnStyle: React.CSSProperties = { background: "transparent", border: "1px solid var(--border)", borderRadius: 6, padding: 4, cursor: "pointer", display: "inline-flex", alignItems: "center", color: "var(--text2)" };
+  function ExportIcons({ rows, label }: { rows: Sale[]; label: string }) {
+    return (
+      <>
+        <button type="button" title={`Download ${label} Excel`} style={exportBtnStyle} onClick={() => exportExcel(rows, label)}><FileSpreadsheet size={14} /></button>
+        <button type="button" title={`Download ${label} PDF`} style={exportBtnStyle} onClick={() => exportPDF(rows, label)}><FileText size={14} /></button>
+      </>
+    );
+  }
+
+  const todaySales = sales.filter(s => s.created_at.startsWith(today));
+  const weekSales = sales.filter(s => s.created_at >= weekStart);
+  const rangeLabel = (fromDate || toDate) ? `${fromDate || "…"}_to_${toDate || "…"}` : "All";
 
   return (
     <>
