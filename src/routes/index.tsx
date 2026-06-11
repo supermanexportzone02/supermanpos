@@ -828,7 +828,13 @@ function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =
 // ---------- REPORTS ----------
 function Reports({ sales, saleItems, products, expenses, reload, setModal }: { sales: Sale[]; saleItems: SaleItem[]; products: Product[]; expenses: Expense[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
   const today = new Date().toISOString().slice(0, 10);
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const [monthOffset, setMonthOffset] = useState(0);
+  const monthDate = new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1);
+  const monthStartDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const monthEndDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+  const monthStart = monthStartDate.toISOString();
+  const monthEnd = monthEndDate.toISOString();
+  const monthLabel = monthDate.toLocaleString("en-US", { month: "long", year: "numeric" });
   const weekStart = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
   const [query, setQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -836,7 +842,8 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
 
   const todayTotal = sales.filter(s => s.created_at.startsWith(today)).reduce((a, s) => a + Number(s.total), 0);
   const weekTotal = sales.filter(s => s.created_at >= weekStart).reduce((a, s) => a + Number(s.total), 0);
-  const monthTotal = sales.filter(s => s.created_at >= monthStart).reduce((a, s) => a + Number(s.total), 0);
+  const monthSales = sales.filter(s => s.created_at >= monthStart && s.created_at < monthEnd);
+  const monthTotal = monthSales.reduce((a, s) => a + Number(s.total), 0);
   const allTotal = sales.reduce((a, s) => a + Number(s.total), 0);
 
   // weekly Saturday→Friday
