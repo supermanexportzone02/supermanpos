@@ -939,7 +939,7 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
     const csv = [header.join(",")].concat(
       rows.map(s => [
         s.invoice_no,
-        new Date(s.created_at).toLocaleString(),
+        new Date(s.created_at).toLocaleDateString(),
         (s.customers?.name || "Walk-in").replace(/,/g, " "),
         (s.staff?.name || "").replace(/,/g, " "),
         Number(s.subtotal).toFixed(2),
