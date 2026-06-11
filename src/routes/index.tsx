@@ -155,9 +155,6 @@ function Login({ staffList, onLogin, reload }: { staffList: Staff[]; onLogin: (s
             {error && <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 6, textAlign: "center" }}>{error}</div>}
           </div>
         )}
-        <div style={{ marginTop: 16, fontSize: 11, color: "var(--text3)", textAlign: "center" }}>
-          Default: Admin / PIN <b>1234</b>
-        </div>
       </div>
     </div>
   );
@@ -928,6 +925,75 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
     await reload();
   }
 
+  function getRangeSales(period: "week" | "month" | "all") {
+    if (period === "all") return sales;
+    if (period === "week") return sales.filter(s => s.created_at >= weekStart);
+    return sales.filter(s => s.created_at >= monthStart);
+  }
+  function exportExcel(period: "week" | "month" | "all", label: string) {
+    const rows = getRangeSales(period);
+    const header = ["Invoice", "Date", "Customer", "Staff", "Subtotal", "Discount", "Total", "Paid", "Due"];
+    const csv = [header.join(",")].concat(
+      rows.map(s => [
+        s.invoice_no,
+        new Date(s.created_at).toLocaleString(),
+        (s.customers?.name || "Walk-in").replace(/,/g, " "),
+        (s.staff?.name || "").replace(/,/g, " "),
+        Number(s.subtotal).toFixed(2),
+        Number(s.discount).toFixed(2),
+        Number(s.total).toFixed(2),
+        Number(s.paid).toFixed(2),
+        Number(s.due).toFixed(2),
+      ].join(",")),
+    ).join("\n");
+    const total = rows.reduce((a, s) => a + Number(s.total), 0);
+    const blob = new Blob(["\ufeff" + csv + `\n,,,,,,Total,,${total.toFixed(2)}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `Sales-${label}-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+  function exportPDF(period: "week" | "month" | "all", label: string) {
+    const rows = getRangeSales(period);
+    const total = rows.reduce((a, s) => a + Number(s.total), 0);
+    const w = window.open("", "_blank", "width=900,height=700");
+    if (!w) return;
+    w.document.write(`<html><head><title>Sales Report - ${label}</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:24px;color:#111}
+        h1{margin:0 0 4px;font-size:20px}
+        .sub{color:#666;font-size:12px;margin-bottom:16px}
+        table{width:100%;border-collapse:collapse;font-size:12px}
+        th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}
+        th{background:#f3f3f3}
+        td.r,th.r{text-align:right}
+        tfoot td{font-weight:bold;background:#f9f9f9}
+        @media print{button{display:none}}
+      </style></head><body>
+      <h1>Sales Report — ${label}</h1>
+      <div class="sub">Generated: ${new Date().toLocaleString()} • ${rows.length} sales</div>
+      <button onclick="window.print()" style="margin-bottom:12px;padding:6px 12px">Print / Save as PDF</button>
+      <table>
+        <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Staff</th>
+          <th class="r">Subtotal</th><th class="r">Discount</th><th class="r">Total</th><th class="r">Paid</th><th class="r">Due</th></tr></thead>
+        <tbody>
+        ${rows.map(s => `<tr>
+          <td>${s.invoice_no}</td>
+          <td>${new Date(s.created_at).toLocaleString()}</td>
+          <td>${s.customers?.name || "Walk-in"}</td>
+          <td>${s.staff?.name || ""}</td>
+          <td class="r">${Number(s.subtotal).toFixed(2)}</td>
+          <td class="r">${Number(s.discount).toFixed(2)}</td>
+          <td class="r">${Number(s.total).toFixed(2)}</td>
+          <td class="r">${Number(s.paid).toFixed(2)}</td>
+          <td class="r">${Number(s.due).toFixed(2)}</td>
+        </tr>`).join("")}
+        </tbody>
+        <tfoot><tr><td colspan="6">Grand Total</td><td class="r">৳${total.toFixed(2)}</td><td colspan="2"></td></tr></tfoot>
+      </table>
+      </body></html>`);
+    w.document.close();
+  }
+
   return (
     <>
       <div className="stats-grid">
@@ -936,6 +1002,22 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
         <StatCard icon={<TrendingUp size={14} />} label="This Month" value={fmt(monthTotal)} sub="MTD" />
         <StatCard icon={<TrendingUp size={14} />} label="All Time" value={fmt(allTotal)} sub={`${sales.length} sales`} />
       </div>
+
+      <div className="card">
+        <div className="card-title"><span>Export Reports</span></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
+          {([["week", "This Week"], ["month", "This Month"], ["all", "All Time"]] as const).map(([k, lbl]) => (
+            <div key={k} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 10 }}>
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>{lbl}</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button className="btn btn-sm" onClick={() => exportExcel(k, lbl)} style={{ flex: 1 }}>Excel</button>
+                <button className="btn btn-sm btn-primary" onClick={() => exportPDF(k, lbl)} style={{ flex: 1 }}>PDF</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
 
       <div className="card">
         <div className="card-title">
