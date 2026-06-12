@@ -50,6 +50,8 @@ function fmt(n: number) {
   return "৳ " + Math.round(n).toLocaleString("en-IN");
 }
 
+const SESSION_KEY = "pos_session";
+
 function POSApp() {
   const [booting, setBooting] = useState(true);
   const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -58,7 +60,18 @@ function POSApp() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("staff").select("*").eq("active", true).order("created_at");
-      setStaffList(data ?? []);
+      const list = data ?? [];
+      setStaffList(list);
+      // Restore session if previously logged in
+      try {
+        const raw = typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null;
+        if (raw) {
+          const saved = JSON.parse(raw) as { id: string; colorIdx: number };
+          const match = list.find(s => s.id === saved.id);
+          if (match) setCurrentUser({ ...match, colorIdx: saved.colorIdx ?? 0 });
+          else localStorage.removeItem(SESSION_KEY);
+        }
+      } catch { /* ignore */ }
       setBooting(false);
     })();
   }, []);
@@ -78,7 +91,10 @@ function POSApp() {
     return (
       <Login
         staffList={staffList}
-        onLogin={(s, idx) => setCurrentUser({ ...s, colorIdx: idx })}
+        onLogin={(s, idx) => {
+          try { localStorage.setItem(SESSION_KEY, JSON.stringify({ id: s.id, colorIdx: idx })); } catch { /* ignore */ }
+          setCurrentUser({ ...s, colorIdx: idx });
+        }}
         reload={async () => {
           const { data } = await supabase.from("staff").select("*").eq("active", true).order("created_at");
           setStaffList(data ?? []);
@@ -87,8 +103,12 @@ function POSApp() {
     );
   }
 
-  return <Shell user={currentUser} onLogout={() => setCurrentUser(null)} />;
+  return <Shell user={currentUser} onLogout={() => {
+    try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+    setCurrentUser(null);
+  }} />;
 }
+
 
 // ---------- LOGIN ----------
 function Login({ staffList, onLogin, reload }: { staffList: Staff[]; onLogin: (s: Staff, idx: number) => void; reload: () => void }) {
