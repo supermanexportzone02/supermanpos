@@ -558,8 +558,19 @@ function POS({
           ))}
         </div>
         <div className="cart-footer">
-          <select className="cart-select" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+          <select className="cart-select" value={customerId} onChange={(e) => {
+            if (e.target.value === "__new__") {
+              setModal(<CustomerForm onClose={() => setModal(null)} onSaved={async (created) => {
+                setModal(null);
+                await onAfterCheckout();
+                if (created?.id) setCustomerId(created.id);
+              }} />);
+              return;
+            }
+            setCustomerId(e.target.value);
+          }}>
             <option value="">— Walk-in Customer —</option>
+            <option value="__new__">+ New Customer…</option>
             {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone || "—"})</option>)}
           </select>
           <div className="cart-disc-row" style={{ gap: 6 }}>
