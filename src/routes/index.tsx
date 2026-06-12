@@ -37,6 +37,15 @@ const SHOP = {
   address: "Killarpull, Narayanganj, Bangladesh",
 };
 
+function esc(s: unknown): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function fmt(n: number) {
   return "৳ " + Math.round(n).toLocaleString("en-IN");
 }
