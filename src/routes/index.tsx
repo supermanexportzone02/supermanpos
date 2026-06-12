@@ -37,6 +37,15 @@ const SHOP = {
   address: "Killarpull, Narayanganj, Bangladesh",
 };
 
+function esc(s: unknown): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function fmt(n: number) {
   return "৳ " + Math.round(n).toLocaleString("en-IN");
 }
@@ -579,8 +588,11 @@ function showInvoice(d: {
       <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;margin:6px 0;padding:4px 0;font-size:10px;">
         <div>Invoice: <b>${d.invoice_no}</b></div>
         <div>Date: ${d.date.toLocaleString()}</div>
-        <div>Staff: ${d.staff}</div>
-        <div>Customer: ${d.customer}${d.customer_phone ? " (" + d.customer_phone + ")" : ""}</div>
+      <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;margin:6px 0;padding:4px 0;font-size:10px;">
+        <div>Invoice: <b>${esc(d.invoice_no)}</b></div>
+        <div>Date: ${esc(d.date.toLocaleString())}</div>
+        <div>Staff: ${esc(d.staff)}</div>
+        <div>Customer: ${esc(d.customer)}${d.customer_phone ? " (" + esc(d.customer_phone) + ")" : ""}</div>
       </div>
       <table style="width:100%;font-size:10px;border-collapse:collapse;">
         <thead><tr style="border-bottom:1px dashed #000;">
@@ -592,7 +604,7 @@ function showInvoice(d: {
         <tbody>
           ${d.items.map(c => `
             <tr>
-              <td style="padding:3px 0;">${c.name}</td>
+              <td style="padding:3px 0;">${esc(c.name)}</td>
               <td style="text-align:center;">${c.qty}</td>
               <td style="text-align:right;">${Math.round(c.price)}</td>
               <td style="text-align:right;">${Math.round(c.price * c.qty)}</td>
@@ -959,7 +971,7 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
     const total = rows.reduce((a, s) => a + Number(s.total), 0);
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) return;
-    w.document.write(`<html><head><title>Sales Report - ${label}</title>
+    w.document.write(`<html><head><title>Sales Report - ${esc(label)}</title>
       <style>
         body{font-family:Arial,sans-serif;padding:24px;color:#111}
         h1{margin:0 0 4px;font-size:20px}
@@ -971,18 +983,18 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
         tfoot td{font-weight:bold;background:#f9f9f9}
         @media print{button{display:none}}
       </style></head><body>
-      <h1>Sales Report — ${label}</h1>
-      <div class="sub">Generated: ${new Date().toLocaleString()} • ${rows.length} sales</div>
+      <h1>Sales Report — ${esc(label)}</h1>
+      <div class="sub">Generated: ${esc(new Date().toLocaleString())} • ${rows.length} sales</div>
       <button onclick="window.print()" style="margin-bottom:12px;padding:6px 12px">Print / Save as PDF</button>
       <table>
         <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Staff</th>
           <th class="r">Subtotal</th><th class="r">Discount</th><th class="r">Total</th><th class="r">Paid</th><th class="r">Due</th></tr></thead>
         <tbody>
         ${rows.map(s => `<tr>
-          <td>${s.invoice_no}</td>
-          <td>${new Date(s.created_at).toLocaleString()}</td>
-          <td>${s.customers?.name || "Walk-in"}</td>
-          <td>${s.staff?.name || ""}</td>
+          <td>${esc(s.invoice_no)}</td>
+          <td>${esc(new Date(s.created_at).toLocaleString())}</td>
+          <td>${esc(s.customers?.name || "Walk-in")}</td>
+          <td>${esc(s.staff?.name || "")}</td>
           <td class="r">${Number(s.subtotal).toFixed(2)}</td>
           <td class="r">${Number(s.discount).toFixed(2)}</td>
           <td class="r">${Number(s.total).toFixed(2)}</td>
