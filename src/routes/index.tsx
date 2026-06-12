@@ -558,8 +558,19 @@ function POS({
           ))}
         </div>
         <div className="cart-footer">
-          <select className="cart-select" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+          <select className="cart-select" value={customerId} onChange={(e) => {
+            if (e.target.value === "__new__") {
+              setModal(<CustomerForm onClose={() => setModal(null)} onSaved={async (created) => {
+                setModal(null);
+                await onAfterCheckout();
+                if (created?.id) setCustomerId(created.id);
+              }} />);
+              return;
+            }
+            setCustomerId(e.target.value);
+          }}>
             <option value="">— Walk-in Customer —</option>
+            <option value="__new__">+ New Customer…</option>
             {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone || "—"})</option>)}
           </select>
           <div className="cart-disc-row" style={{ gap: 6 }}>
@@ -837,12 +848,12 @@ function CustomersPage({ customers, reload, setModal }: { customers: Customer[];
   );
 }
 
-function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => Promise<void> }) {
+function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: (created?: { id: string; name: string }) => Promise<void> | void }) {
   const [name, setName] = useState(""); const [phone, setPhone] = useState(""); const [address, setAddress] = useState("");
   async function save() {
     if (!name.trim()) { alert("Name is required"); return; }
-    await supabase.from("customers").insert({ name: name.trim(), phone: phone.trim() || null, address: address.trim() || null });
-    await onSaved();
+    const { data } = await supabase.from("customers").insert({ name: name.trim(), phone: phone.trim() || null, address: address.trim() || null }).select("id, name").single();
+    await onSaved(data ?? undefined);
   }
   return <Modal title="New Customer" setModal={onClose as any} body={
     <>
