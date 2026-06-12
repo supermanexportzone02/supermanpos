@@ -50,6 +50,8 @@ function fmt(n: number) {
   return "৳ " + Math.round(n).toLocaleString("en-IN");
 }
 
+const SESSION_KEY = "pos_session";
+
 function POSApp() {
   const [booting, setBooting] = useState(true);
   const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -58,7 +60,18 @@ function POSApp() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("staff").select("*").eq("active", true).order("created_at");
-      setStaffList(data ?? []);
+      const list = data ?? [];
+      setStaffList(list);
+      // Restore session if previously logged in
+      try {
+        const raw = typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null;
+        if (raw) {
+          const saved = JSON.parse(raw) as { id: string; colorIdx: number };
+          const match = list.find(s => s.id === saved.id);
+          if (match) setCurrentUser({ ...match, colorIdx: saved.colorIdx ?? 0 });
+          else localStorage.removeItem(SESSION_KEY);
+        }
+      } catch { /* ignore */ }
       setBooting(false);
     })();
   }, []);
@@ -78,7 +91,10 @@ function POSApp() {
     return (
       <Login
         staffList={staffList}
-        onLogin={(s, idx) => setCurrentUser({ ...s, colorIdx: idx })}
+        onLogin={(s, idx) => {
+          try { localStorage.setItem(SESSION_KEY, JSON.stringify({ id: s.id, colorIdx: idx })); } catch { /* ignore */ }
+          setCurrentUser({ ...s, colorIdx: idx });
+        }}
         reload={async () => {
           const { data } = await supabase.from("staff").select("*").eq("active", true).order("created_at");
           setStaffList(data ?? []);
@@ -87,8 +103,12 @@ function POSApp() {
     );
   }
 
-  return <Shell user={currentUser} onLogout={() => setCurrentUser(null)} />;
+  return <Shell user={currentUser} onLogout={() => {
+    try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+    setCurrentUser(null);
+  }} />;
 }
+
 
 // ---------- LOGIN ----------
 function Login({ staffList, onLogin, reload }: { staffList: Staff[]; onLogin: (s: Staff, idx: number) => void; reload: () => void }) {
@@ -581,22 +601,19 @@ function showInvoice(d: {
   if (printNode) {
     printNode.innerHTML = `
       <div style="text-align:center;">
-        <div style="font-size:14px;font-weight:bold;">${SHOP.name}</div>
-        <div style="font-size:10px;">${SHOP.address}</div>
-        <div style="font-size:10px;">Contact: ${SHOP.phone}</div>
+        <div style="font-size:17px;font-weight:900;letter-spacing:0.3px;">${esc(SHOP.name)}</div>
+        <div style="font-size:11px;font-weight:700;">${esc(SHOP.address)}</div>
+        <div style="font-size:11px;font-weight:700;">Contact: ${esc(SHOP.phone)}</div>
       </div>
-      <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;margin:6px 0;padding:4px 0;font-size:10px;">
-        <div>Invoice: <b>${d.invoice_no}</b></div>
-        <div>Date: ${d.date.toLocaleString()}</div>
-      <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;margin:6px 0;padding:4px 0;font-size:10px;">
-        <div>Invoice: <b>${esc(d.invoice_no)}</b></div>
+      <div style="border-top:2px solid #000;border-bottom:2px solid #000;margin:6px 0;padding:4px 0;font-size:12px;font-weight:700;">
+        <div>Invoice: <b style="font-weight:900;">${esc(d.invoice_no)}</b></div>
         <div>Date: ${esc(d.date.toLocaleString())}</div>
-        <div>Staff: ${esc(d.staff)}</div>
-        <div>Customer: ${esc(d.customer)}${d.customer_phone ? " (" + esc(d.customer_phone) + ")" : ""}</div>
+        <div>Staff: <b style="font-weight:900;">${esc(d.staff)}</b></div>
+        <div>Customer: <b style="font-weight:900;">${esc(d.customer)}</b>${d.customer_phone ? " (" + esc(d.customer_phone) + ")" : ""}</div>
       </div>
-      <table style="width:100%;font-size:10px;border-collapse:collapse;">
-        <thead><tr style="border-bottom:1px dashed #000;">
-          <th style="text-align:left;padding:2px 0;">Item</th>
+      <table style="width:100%;font-size:12px;border-collapse:collapse;font-weight:700;">
+        <thead><tr style="border-bottom:2px solid #000;font-weight:900;">
+          <th style="text-align:left;padding:3px 0;">Item</th>
           <th style="text-align:center;">Qty</th>
           <th style="text-align:right;">Price</th>
           <th style="text-align:right;">Total</th>
@@ -612,14 +629,14 @@ function showInvoice(d: {
           `).join("")}
         </tbody>
       </table>
-      <div style="border-top:1px dashed #000;margin-top:6px;padding-top:4px;font-size:11px;">
+      <div style="border-top:2px solid #000;margin-top:6px;padding-top:4px;font-size:12px;font-weight:700;">
         <div style="display:flex;justify-content:space-between;"><span>Subtotal</span><span>${Math.round(d.subtotal)}</span></div>
         <div style="display:flex;justify-content:space-between;"><span>Discount</span><span>- ${Math.round(d.discAmt)}</span></div>
-        <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;border-top:1px dashed #000;margin-top:4px;padding-top:4px;"><span>Grand Total</span><span>${Math.round(d.total)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:900;font-size:15px;border-top:2px solid #000;border-bottom:2px solid #000;margin:4px 0;padding:4px 0;"><span>Grand Total</span><span>${Math.round(d.total)}</span></div>
         <div style="display:flex;justify-content:space-between;"><span>Paid</span><span>${Math.round(d.paid)}</span></div>
-        ${d.due > 0 ? `<div style="display:flex;justify-content:space-between;font-weight:bold;"><span>Due</span><span>${Math.round(d.due)}</span></div>` : ""}
+        ${d.due > 0 ? `<div style="display:flex;justify-content:space-between;font-weight:900;"><span>Due</span><span>${Math.round(d.due)}</span></div>` : ""}
       </div>
-      <div style="text-align:center;margin-top:10px;font-size:10px;border-top:1px dashed #000;padding-top:6px;">
+      <div style="text-align:center;margin-top:10px;font-size:11px;font-weight:700;border-top:2px solid #000;padding-top:6px;">
         Thank You For Shopping
       </div>
     `;
