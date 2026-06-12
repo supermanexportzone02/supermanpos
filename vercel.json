@@ -1,8 +1,0 @@
-{
-  "buildCommand": "bun run build",
-  "outputDirectory": "dist/server",
-  "framework": null,
-  "routes": [
-    { "src": "/(.*)", "dest": "/server.js" }
-  ]
-}
