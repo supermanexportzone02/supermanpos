@@ -1,8 +1,8 @@
 {
   "buildCommand": "bun run build",
-  "outputDirectory": "dist/client",
+  "outputDirectory": "dist/server",
   "framework": null,
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "/(.*)", "dest": "/server.js" }
   ]
 }
