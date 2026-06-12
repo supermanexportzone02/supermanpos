@@ -837,12 +837,12 @@ function CustomersPage({ customers, reload, setModal }: { customers: Customer[];
   );
 }
 
-function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => Promise<void> }) {
+function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: (created?: { id: string; name: string }) => Promise<void> | void }) {
   const [name, setName] = useState(""); const [phone, setPhone] = useState(""); const [address, setAddress] = useState("");
   async function save() {
     if (!name.trim()) { alert("Name is required"); return; }
-    await supabase.from("customers").insert({ name: name.trim(), phone: phone.trim() || null, address: address.trim() || null });
-    await onSaved();
+    const { data } = await supabase.from("customers").insert({ name: name.trim(), phone: phone.trim() || null, address: address.trim() || null }).select("id, name").single();
+    await onSaved(data ?? undefined);
   }
   return <Modal title="New Customer" setModal={onClose as any} body={
     <>
