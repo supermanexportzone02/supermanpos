@@ -971,7 +971,7 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
     const total = rows.reduce((a, s) => a + Number(s.total), 0);
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) return;
-    w.document.write(`<html><head><title>Sales Report - ${label}</title>
+    w.document.write(`<html><head><title>Sales Report - ${esc(label)}</title>
       <style>
         body{font-family:Arial,sans-serif;padding:24px;color:#111}
         h1{margin:0 0 4px;font-size:20px}
@@ -983,18 +983,18 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
         tfoot td{font-weight:bold;background:#f9f9f9}
         @media print{button{display:none}}
       </style></head><body>
-      <h1>Sales Report — ${label}</h1>
-      <div class="sub">Generated: ${new Date().toLocaleString()} • ${rows.length} sales</div>
+      <h1>Sales Report — ${esc(label)}</h1>
+      <div class="sub">Generated: ${esc(new Date().toLocaleString())} • ${rows.length} sales</div>
       <button onclick="window.print()" style="margin-bottom:12px;padding:6px 12px">Print / Save as PDF</button>
       <table>
         <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Staff</th>
           <th class="r">Subtotal</th><th class="r">Discount</th><th class="r">Total</th><th class="r">Paid</th><th class="r">Due</th></tr></thead>
         <tbody>
         ${rows.map(s => `<tr>
-          <td>${s.invoice_no}</td>
-          <td>${new Date(s.created_at).toLocaleString()}</td>
-          <td>${s.customers?.name || "Walk-in"}</td>
-          <td>${s.staff?.name || ""}</td>
+          <td>${esc(s.invoice_no)}</td>
+          <td>${esc(new Date(s.created_at).toLocaleString())}</td>
+          <td>${esc(s.customers?.name || "Walk-in")}</td>
+          <td>${esc(s.staff?.name || "")}</td>
           <td class="r">${Number(s.subtotal).toFixed(2)}</td>
           <td class="r">${Number(s.discount).toFixed(2)}</td>
           <td class="r">${Number(s.total).toFixed(2)}</td>
