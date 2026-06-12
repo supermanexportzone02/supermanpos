@@ -574,7 +574,9 @@ function POS({
             </select>
             <input className="cart-disc-input" type="number" placeholder={discountType === "percent" ? "Discount %" : "Discount ৳"} min={0}
               value={discount} onChange={(e) => setDiscount(e.target.value)} />
-            <input className="cart-disc-input" type="number" placeholder="Paid amount" min={0}
+          </div>
+          <div className="cart-disc-row" style={{ gap: 6, marginTop: 6 }}>
+            <input className="cart-disc-input" style={{ flex: 1 }} type="number" placeholder="Paid amount" min={0}
               value={paid} onChange={(e) => setPaid(e.target.value)} />
           </div>
           <div className="cart-totals">
