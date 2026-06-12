@@ -588,8 +588,11 @@ function showInvoice(d: {
       <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;margin:6px 0;padding:4px 0;font-size:10px;">
         <div>Invoice: <b>${d.invoice_no}</b></div>
         <div>Date: ${d.date.toLocaleString()}</div>
-        <div>Staff: ${d.staff}</div>
-        <div>Customer: ${d.customer}${d.customer_phone ? " (" + d.customer_phone + ")" : ""}</div>
+      <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;margin:6px 0;padding:4px 0;font-size:10px;">
+        <div>Invoice: <b>${esc(d.invoice_no)}</b></div>
+        <div>Date: ${esc(d.date.toLocaleString())}</div>
+        <div>Staff: ${esc(d.staff)}</div>
+        <div>Customer: ${esc(d.customer)}${d.customer_phone ? " (" + esc(d.customer_phone) + ")" : ""}</div>
       </div>
       <table style="width:100%;font-size:10px;border-collapse:collapse;">
         <thead><tr style="border-bottom:1px dashed #000;">
@@ -601,7 +604,7 @@ function showInvoice(d: {
         <tbody>
           ${d.items.map(c => `
             <tr>
-              <td style="padding:3px 0;">${c.name}</td>
+              <td style="padding:3px 0;">${esc(c.name)}</td>
               <td style="text-align:center;">${c.qty}</td>
               <td style="text-align:right;">${Math.round(c.price)}</td>
               <td style="text-align:right;">${Math.round(c.price * c.qty)}</td>
