@@ -558,21 +558,26 @@ function POS({
           ))}
         </div>
         <div className="cart-footer">
-          <select className="cart-select" value={customerId} onChange={(e) => {
-            if (e.target.value === "__new__") {
+          <div className="cart-disc-row" style={{ gap: 6 }}>
+            <div className="cart-select" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {customerId ? (customers.find(c => c.id === customerId)?.name || "Walk-in") : "— Walk-in Customer —"}
+              </span>
+              {customerId && (
+                <button type="button" className="btn-ghost" style={{ padding: "2px 6px", fontSize: 12 }} onClick={() => setCustomerId("")}>✕</button>
+              )}
+            </div>
+            <button type="button" className="btn-ghost" style={{ padding: "6px 10px" }} onClick={() => {
+              setModal(<CustomerSearchModal customers={customers} onClose={() => setModal(null)} onPick={(id) => { setCustomerId(id); setModal(null); }} />);
+            }}>🔍 Search</button>
+            <button type="button" className="btn-ghost" style={{ padding: "6px 10px" }} onClick={() => {
               setModal(<CustomerForm onClose={() => setModal(null)} onSaved={async (created) => {
                 setModal(null);
                 await onAfterCheckout();
                 if (created?.id) setCustomerId(created.id);
               }} />);
-              return;
-            }
-            setCustomerId(e.target.value);
-          }}>
-            <option value="">— Walk-in Customer —</option>
-            <option value="__new__">+ New Customer…</option>
-            {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone || "—"})</option>)}
-          </select>
+            }}>+ New</button>
+          </div>
           <div className="cart-disc-row" style={{ gap: 6 }}>
             <select
               className="cart-disc-input"
@@ -865,6 +870,30 @@ function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: (cre
     { label: "Cancel", onClick: onClose },
     { label: "Save", primary: true, icon: <Check size={14} />, onClick: save },
   ]} />;
+}
+
+function CustomerSearchModal({ customers, onClose, onPick }: { customers: Customer[]; onClose: () => void; onPick: (id: string) => void }) {
+  const [q, setQ] = useState("");
+  const ql = q.trim().toLowerCase();
+  const filtered = ql
+    ? customers.filter(c => c.name.toLowerCase().includes(ql) || (c.phone || "").toLowerCase().includes(ql))
+    : customers;
+  return <Modal title="Search Customer" setModal={onClose as any} body={
+    <>
+      <div className="form-group">
+        <input className="form-input" autoFocus placeholder="Search by name or phone…" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      <div style={{ maxHeight: 320, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 8 }}>
+        {filtered.length === 0 && <div className="empty-row" style={{ padding: 12 }}>No customers found</div>}
+        {filtered.map(c => (
+          <div key={c.id} onClick={() => onPick(c.id)} style={{ padding: "8px 10px", cursor: "pointer", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 8 }}>
+            <strong>{c.name}</strong>
+            <span style={{ color: "var(--muted-foreground)" }}>{c.phone || "—"}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  } actions={[{ label: "Close", onClick: onClose }]} />;
 }
 
 // ---------- REPORTS ----------
