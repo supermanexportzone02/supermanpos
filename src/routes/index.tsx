@@ -558,21 +558,26 @@ function POS({
           ))}
         </div>
         <div className="cart-footer">
-          <select className="cart-select" value={customerId} onChange={(e) => {
-            if (e.target.value === "__new__") {
+          <div className="cart-disc-row" style={{ gap: 6 }}>
+            <div className="cart-select" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {customerId ? (customers.find(c => c.id === customerId)?.name || "Walk-in") : "— Walk-in Customer —"}
+              </span>
+              {customerId && (
+                <button type="button" className="btn-ghost" style={{ padding: "2px 6px", fontSize: 12 }} onClick={() => setCustomerId("")}>✕</button>
+              )}
+            </div>
+            <button type="button" className="btn-ghost" style={{ padding: "6px 10px" }} onClick={() => {
+              setModal(<CustomerSearchModal customers={customers} onClose={() => setModal(null)} onPick={(id) => { setCustomerId(id); setModal(null); }} />);
+            }}>🔍 Search</button>
+            <button type="button" className="btn-ghost" style={{ padding: "6px 10px" }} onClick={() => {
               setModal(<CustomerForm onClose={() => setModal(null)} onSaved={async (created) => {
                 setModal(null);
                 await onAfterCheckout();
                 if (created?.id) setCustomerId(created.id);
               }} />);
-              return;
-            }
-            setCustomerId(e.target.value);
-          }}>
-            <option value="">— Walk-in Customer —</option>
-            <option value="__new__">+ New Customer…</option>
-            {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone || "—"})</option>)}
-          </select>
+            }}>+ New</button>
+          </div>
           <div className="cart-disc-row" style={{ gap: 6 }}>
             <select
               className="cart-disc-input"
