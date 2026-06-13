@@ -872,6 +872,30 @@ function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: (cre
   ]} />;
 }
 
+function CustomerSearchModal({ customers, onClose, onPick }: { customers: Customer[]; onClose: () => void; onPick: (id: string) => void }) {
+  const [q, setQ] = useState("");
+  const ql = q.trim().toLowerCase();
+  const filtered = ql
+    ? customers.filter(c => c.name.toLowerCase().includes(ql) || (c.phone || "").toLowerCase().includes(ql))
+    : customers;
+  return <Modal title="Search Customer" setModal={onClose as any} body={
+    <>
+      <div className="form-group">
+        <input className="form-input" autoFocus placeholder="Search by name or phone…" value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      <div style={{ maxHeight: 320, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 8 }}>
+        {filtered.length === 0 && <div className="empty-row" style={{ padding: 12 }}>No customers found</div>}
+        {filtered.map(c => (
+          <div key={c.id} onClick={() => onPick(c.id)} style={{ padding: "8px 10px", cursor: "pointer", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 8 }}>
+            <strong>{c.name}</strong>
+            <span style={{ color: "var(--muted-foreground)" }}>{c.phone || "—"}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  } actions={[{ label: "Close", onClick: onClose }]} />;
+}
+
 // ---------- REPORTS ----------
 function Reports({ sales, saleItems, products, expenses, reload, setModal }: { sales: Sale[]; saleItems: SaleItem[]; products: Product[]; expenses: Expense[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
   const today = new Date().toISOString().slice(0, 10);
