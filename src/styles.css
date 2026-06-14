@@ -156,6 +156,18 @@ tr:hover td { background: rgba(30,35,54,0.5); }
 .cart-empty svg { width: 38px; height: 38px; display: block; margin: 0 auto 10px; }
 .cart-footer { padding: 14px; border-top: 1px solid var(--border); }
 .cart-select { width: 100%; padding: 8px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 12px; margin-bottom: 8px; }
+
+/* Customer row in cart footer */
+.cust-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: nowrap; }
+.cust-pill { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 10px; height: 32px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 12px; }
+.cust-pill-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cust-pill-x { background: none; border: none; color: var(--text3); cursor: pointer; padding: 0 2px; font-size: 12px; line-height: 1; }
+.cust-pill-x:hover { color: var(--danger); }
+.cust-btn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 12px; cursor: pointer; white-space: nowrap; }
+.cust-btn:hover { background: #252c45; border-color: var(--accent); }
+@media (max-width: 520px) {
+  .cust-btn { padding: 0 8px; font-size: 11px; }
+}
 .cart-disc-row { display: flex; gap: 6px; margin-bottom: 10px; }
 .cart-disc-input { flex: 1; padding: 8px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; }
 .cart-disc-input:focus { outline: none; border-color: var(--accent); }
