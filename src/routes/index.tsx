@@ -558,25 +558,25 @@ function POS({
           ))}
         </div>
         <div className="cart-footer">
-          <div className="cart-disc-row" style={{ gap: 6 }}>
-            <div className="cart-select" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div className="cust-row">
+            <div className="cust-pill">
+              <span className="cust-pill-name">
                 {customerId ? (customers.find(c => c.id === customerId)?.name || "Walk-in") : "— Walk-in Customer —"}
               </span>
               {customerId && (
-                <button type="button" className="btn-ghost" style={{ padding: "2px 6px", fontSize: 12 }} onClick={() => setCustomerId("")}>✕</button>
+                <button type="button" className="cust-pill-x" onClick={() => setCustomerId("")}>✕</button>
               )}
             </div>
-            <button type="button" className="btn-ghost" style={{ padding: "6px 10px" }} onClick={() => {
+            <button type="button" className="cust-btn" onClick={() => {
               setModal(<CustomerSearchModal customers={customers} onClose={() => setModal(null)} onPick={(id) => { setCustomerId(id); setModal(null); }} />);
-            }}>🔍 Search</button>
-            <button type="button" className="btn-ghost" style={{ padding: "6px 10px" }} onClick={() => {
+            }}><Search size={13} /> Search</button>
+            <button type="button" className="cust-btn" onClick={() => {
               setModal(<CustomerForm onClose={() => setModal(null)} onSaved={async (created) => {
                 setModal(null);
                 await onAfterCheckout();
                 if (created?.id) setCustomerId(created.id);
               }} />);
-            }}>+ New</button>
+            }}><Plus size={13} /> New</button>
           </div>
           <div className="cart-disc-row" style={{ gap: 6 }}>
             <select
