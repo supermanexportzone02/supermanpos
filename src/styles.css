@@ -237,4 +237,7 @@ tr:hover td { background: rgba(30,35,54,0.5); }
   .pos-layout { grid-template-columns: 1fr; height: auto; }
   .report-grid { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }
+  /* On mobile, let cart flow with the page so footer is reachable by scrolling */
+  .cart-panel { height: auto; max-height: none; }
+  .cart-body { flex: 0 0 auto; max-height: 45vh; }
 }
