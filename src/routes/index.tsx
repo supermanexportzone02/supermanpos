@@ -618,49 +618,49 @@ function showInvoice(d: {
   const printNode = document.getElementById("invoice-print");
   if (printNode) {
     printNode.innerHTML = `
-      <div style="text-align:center;">
-        <div style="font-size:17px;font-weight:900;letter-spacing:0.3px;">${esc(SHOP.name)}</div>
+      <div style="text-align:center;width:100%;overflow:hidden;">
+        <div style="font-size:16px;font-weight:900;letter-spacing:0;">${esc(SHOP.name)}</div>
         <div style="font-size:11px;font-weight:700;">${esc(SHOP.address)}</div>
         <div style="font-size:11px;font-weight:700;">Contact: ${esc(SHOP.phone)}</div>
       </div>
-      <div style="border-top:2px solid #000;border-bottom:2px solid #000;margin:6px 0;padding:4px 0;font-size:12px;font-weight:700;">
+      <div style="border-top:2px solid #000;border-bottom:2px solid #000;margin:5px 0;padding:3px 0;font-size:11px;font-weight:800;line-height:1.25;">
         <div>Invoice: <b style="font-weight:900;">${esc(d.invoice_no)}</b></div>
         <div>Date: ${esc(d.date.toLocaleString())}</div>
         <div>Staff: <b style="font-weight:900;">${esc(d.staff)}</b></div>
         <div>Customer: <b style="font-weight:900;">${esc(d.customer)}</b>${d.customer_phone ? " (" + esc(d.customer_phone) + ")" : ""}</div>
       </div>
-      <table style="width:100%;font-size:11px;border-collapse:collapse;font-weight:700;table-layout:fixed;">
+      <table style="width:100%;font-size:10px;border-collapse:collapse;font-weight:800;table-layout:fixed;line-height:1.15;">
         <colgroup>
-          <col style="width:46%;" />
-          <col style="width:12%;" />
-          <col style="width:21%;" />
-          <col style="width:21%;" />
+          <col style="width:41%;" />
+          <col style="width:9%;" />
+          <col style="width:23%;" />
+          <col style="width:27%;" />
         </colgroup>
         <thead><tr style="border-bottom:2px solid #000;font-weight:900;">
-          <th style="text-align:left;padding:3px 0;white-space:nowrap;">Item</th>
-          <th style="text-align:center;white-space:nowrap;">Qty</th>
-          <th style="text-align:right;white-space:nowrap;">Price</th>
-          <th style="text-align:right;white-space:nowrap;">Total</th>
+          <th style="text-align:left;padding:2px 0;white-space:nowrap;">Item</th>
+          <th style="text-align:center;padding:2px 0;white-space:nowrap;">Q</th>
+          <th class="num" style="padding:2px 0;">Price</th>
+          <th class="num" style="padding:2px 0;">Total</th>
         </tr></thead>
         <tbody>
           ${d.items.map(c => `
             <tr>
-              <td style="padding:3px 0;word-break:break-word;overflow-wrap:break-word;white-space:normal;max-width:0;">${esc(c.name)}</td>
-              <td style="text-align:center;white-space:nowrap;">${c.qty}</td>
-              <td style="text-align:right;white-space:nowrap;">${Math.round(c.price)}</td>
-              <td style="text-align:right;white-space:nowrap;">${Math.round(c.price * c.qty)}</td>
+              <td style="padding:2px 0;word-break:break-word;overflow-wrap:anywhere;white-space:normal;max-width:0;">${esc(c.name)}</td>
+              <td style="text-align:center;white-space:nowrap;padding:2px 0;">${c.qty}</td>
+              <td class="num" style="padding:2px 0;">${Math.round(c.price)}</td>
+              <td class="num" style="padding:2px 0;">${Math.round(c.price * c.qty)}</td>
             </tr>
           `).join("")}
         </tbody>
       </table>
-      <div style="border-top:2px solid #000;margin-top:6px;padding-top:4px;font-size:12px;font-weight:700;">
+      <div style="border-top:2px solid #000;margin-top:5px;padding-top:3px;font-size:11px;font-weight:800;line-height:1.3;">
         <div style="display:flex;justify-content:space-between;"><span>Subtotal</span><span>${Math.round(d.subtotal)}</span></div>
         <div style="display:flex;justify-content:space-between;"><span>Discount</span><span>- ${Math.round(d.discAmt)}</span></div>
-        <div style="display:flex;justify-content:space-between;font-weight:900;font-size:15px;border-top:2px solid #000;border-bottom:2px solid #000;margin:4px 0;padding:4px 0;"><span>Grand Total</span><span>${Math.round(d.total)}</span></div>
+        <div style="display:flex;justify-content:space-between;gap:4px;font-weight:900;font-size:13px;border-top:2px solid #000;border-bottom:2px solid #000;margin:3px 0;padding:3px 0;"><span>Total</span><span style="white-space:nowrap;">${Math.round(d.total)}</span></div>
         <div style="display:flex;justify-content:space-between;"><span>Paid</span><span>${Math.round(d.paid)}</span></div>
         ${d.due > 0 ? `<div style="display:flex;justify-content:space-between;font-weight:900;"><span>Due</span><span>${Math.round(d.due)}</span></div>` : ""}
       </div>
-      <div style="text-align:center;margin-top:10px;font-size:11px;font-weight:700;border-top:2px solid #000;padding-top:6px;">
+      <div style="text-align:center;margin-top:8px;font-size:11px;font-weight:800;border-top:2px solid #000;padding-top:5px;">
         Thank You For Shopping
       </div>
     `;
