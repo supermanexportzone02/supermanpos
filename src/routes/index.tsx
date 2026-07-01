@@ -629,20 +629,26 @@ function showInvoice(d: {
         <div>Staff: <b style="font-weight:900;">${esc(d.staff)}</b></div>
         <div>Customer: <b style="font-weight:900;">${esc(d.customer)}</b>${d.customer_phone ? " (" + esc(d.customer_phone) + ")" : ""}</div>
       </div>
-      <table style="width:100%;font-size:12px;border-collapse:collapse;font-weight:700;">
+      <table style="width:100%;font-size:11px;border-collapse:collapse;font-weight:700;table-layout:fixed;">
+        <colgroup>
+          <col style="width:46%;" />
+          <col style="width:12%;" />
+          <col style="width:21%;" />
+          <col style="width:21%;" />
+        </colgroup>
         <thead><tr style="border-bottom:2px solid #000;font-weight:900;">
-          <th style="text-align:left;padding:3px 0;">Item</th>
-          <th style="text-align:center;">Qty</th>
-          <th style="text-align:right;">Price</th>
-          <th style="text-align:right;">Total</th>
+          <th style="text-align:left;padding:3px 0;white-space:nowrap;">Item</th>
+          <th style="text-align:center;white-space:nowrap;">Qty</th>
+          <th style="text-align:right;white-space:nowrap;">Price</th>
+          <th style="text-align:right;white-space:nowrap;">Total</th>
         </tr></thead>
         <tbody>
           ${d.items.map(c => `
             <tr>
-              <td style="padding:3px 0;">${esc(c.name)}</td>
-              <td style="text-align:center;">${c.qty}</td>
-              <td style="text-align:right;">${Math.round(c.price)}</td>
-              <td style="text-align:right;">${Math.round(c.price * c.qty)}</td>
+              <td style="padding:3px 0;word-break:break-word;overflow-wrap:break-word;white-space:normal;max-width:0;">${esc(c.name)}</td>
+              <td style="text-align:center;white-space:nowrap;">${c.qty}</td>
+              <td style="text-align:right;white-space:nowrap;">${Math.round(c.price)}</td>
+              <td style="text-align:right;white-space:nowrap;">${Math.round(c.price * c.qty)}</td>
             </tr>
           `).join("")}
         </tbody>
