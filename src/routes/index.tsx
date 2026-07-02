@@ -629,26 +629,26 @@ function showInvoice(d: {
         <div>Staff: <b style="font-weight:900;">${esc(d.staff)}</b></div>
         <div>Customer: <b style="font-weight:900;">${esc(d.customer)}</b>${d.customer_phone ? " (" + esc(d.customer_phone) + ")" : ""}</div>
       </div>
-      <table style="width:100%;font-size:10px;border-collapse:collapse;font-weight:800;table-layout:fixed;line-height:1.15;">
+      <table style="width:100%;font-size:11px;border-collapse:collapse;font-weight:800;table-layout:fixed;line-height:1.2;">
         <colgroup>
-          <col style="width:41%;" />
-          <col style="width:9%;" />
-          <col style="width:23%;" />
-          <col style="width:27%;" />
+          <col style="width:45%;" />
+          <col style="width:15%;" />
+          <col style="width:20%;" />
+          <col style="width:20%;" />
         </colgroup>
         <thead><tr style="border-bottom:2px solid #000;font-weight:900;">
-          <th style="text-align:left;padding:2px 0;white-space:nowrap;">Item</th>
-          <th style="text-align:center;padding:2px 0;white-space:nowrap;">Q</th>
-          <th class="num" style="padding:2px 0;">Price</th>
-          <th class="num" style="padding:2px 0;">Total</th>
+          <th style="text-align:left;padding:2px 4px 2px 0;">Item</th>
+          <th style="text-align:center;padding:2px 2px;">Q</th>
+          <th style="text-align:right;padding:2px 2px;">Price</th>
+          <th style="text-align:right;padding:2px 0 2px 2px;">Total</th>
         </tr></thead>
         <tbody>
           ${d.items.map(c => `
             <tr>
-              <td style="padding:2px 0;word-break:break-word;overflow-wrap:anywhere;white-space:normal;max-width:0;">${esc(c.name)}</td>
-              <td style="text-align:center;white-space:nowrap;padding:2px 0;">${c.qty}</td>
-              <td class="num" style="padding:2px 0;">${Math.round(c.price)}</td>
-              <td class="num" style="padding:2px 0;">${Math.round(c.price * c.qty)}</td>
+              <td style="padding:2px 4px 2px 0;word-break:break-word;overflow-wrap:break-word;">${esc(c.name)}</td>
+              <td style="text-align:center;padding:2px 2px;">${c.qty}</td>
+              <td style="text-align:right;padding:2px 2px;overflow-wrap:break-word;">${Math.round(c.price)}</td>
+              <td style="text-align:right;padding:2px 0 2px 2px;overflow-wrap:break-word;">${Math.round(c.price * c.qty)}</td>
             </tr>
           `).join("")}
         </tbody>
@@ -656,7 +656,7 @@ function showInvoice(d: {
       <div style="border-top:2px solid #000;margin-top:5px;padding-top:3px;font-size:11px;font-weight:800;line-height:1.3;">
         <div style="display:flex;justify-content:space-between;"><span>Subtotal</span><span>${Math.round(d.subtotal)}</span></div>
         <div style="display:flex;justify-content:space-between;"><span>Discount</span><span>- ${Math.round(d.discAmt)}</span></div>
-        <div style="display:flex;justify-content:space-between;gap:4px;font-weight:900;font-size:13px;border-top:2px solid #000;border-bottom:2px solid #000;margin:3px 0;padding:3px 0;"><span>Total</span><span style="white-space:nowrap;">${Math.round(d.total)}</span></div>
+        <div style="display:flex;justify-content:space-between;gap:4px;font-weight:900;font-size:13px;border-top:2px solid #000;border-bottom:2px solid #000;margin:3px 0;padding:3px 0;"><span>Total</span><span>${Math.round(d.total)}</span></div>
         <div style="display:flex;justify-content:space-between;"><span>Paid</span><span>${Math.round(d.paid)}</span></div>
         ${d.due > 0 ? `<div style="display:flex;justify-content:space-between;font-weight:900;"><span>Due</span><span>${Math.round(d.due)}</span></div>` : ""}
       </div>
