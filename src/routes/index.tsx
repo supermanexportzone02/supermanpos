@@ -21,7 +21,8 @@ export const Route = createFileRoute("/")({
 });
 
 // ---------- types ----------
-type Staff = { id: string; name: string; role: string; pin: string | null; active: boolean };
+type Staff = { id: string; name: string; role: string; has_pin: boolean; active: boolean };
+const STAFF_COLS = "id,name,role,active,has_pin,created_at";
 type Product = { id: string; name: string; category: string | null; barcode: string | null; price: number; cost: number; stock: number; low_stock_threshold: number };
 type Customer = { id: string; name: string; phone: string | null; address: string | null; total_purchase: number; points: number; created_at: string };
 type Sale = { id: string; invoice_no: string; customer_id: string | null; staff_id: string | null; subtotal: number; discount: number; total: number; paid: number; due: number; created_at: string; customers?: { name: string } | null; staff?: { name: string } | null };
@@ -59,8 +60,8 @@ function POSApp() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("staff").select("*").eq("active", true).order("created_at");
-      const list = data ?? [];
+      const { data } = await supabase.from("staff").select(STAFF_COLS).eq("active", true).order("created_at");
+      const list = (data ?? []).map(r => ({ ...r, has_pin: !!r.has_pin })) as Staff[];
       setStaffList(list);
       // Restore session if previously logged in
       try {
@@ -96,8 +97,8 @@ function POSApp() {
           setCurrentUser({ ...s, colorIdx: idx });
         }}
         reload={async () => {
-          const { data } = await supabase.from("staff").select("*").eq("active", true).order("created_at");
-          setStaffList(data ?? []);
+          const { data } = await supabase.from("staff").select(STAFF_COLS).eq("active", true).order("created_at");
+          setStaffList(((data ?? []).map(r => ({ ...r, has_pin: !!r.has_pin })) as Staff[]));
         }}
       />
     );
@@ -123,15 +124,17 @@ function Login({ staffList, onLogin, reload }: { staffList: Staff[]; onLogin: (s
 
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, []);
 
-  function tryLogin() {
+  async function tryLogin() {
     if (selected === null) return;
     const s = staffList[selected];
-    if (s.pin && s.pin !== pin) {
+    const { data, error: rpcErr } = await supabase.rpc("verify_staff_pin", { _staff_id: s.id, _pin: pin });
+    if (rpcErr || !Array.isArray(data) || data.length === 0) {
       setError("Wrong PIN. Try again.");
       setPin("");
       return;
     }
-    onLogin(s, selected);
+    const verified = data[0] as Staff;
+    onLogin({ ...verified, has_pin: !!verified.has_pin }, selected);
   }
 
   return (
@@ -217,14 +220,14 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
       supabase.from("customers").select("*").order("name"),
       supabase.from("sales").select("*, customers(name), staff(name)").order("created_at", { ascending: false }),
       supabase.from("sale_items").select("*"),
-      supabase.from("staff").select("*").order("created_at"),
+      supabase.from("staff").select(STAFF_COLS).order("created_at"),
       supabase.from("expenses").select("*").order("created_at", { ascending: false }),
     ]);
     setProducts(p.data ?? []);
     setCustomers(c.data ?? []);
     setSales((s.data as Sale[]) ?? []);
     setSaleItems(si.data ?? []);
-    setStaffAll(st.data ?? []);
+    setStaffAll(((st.data ?? []).map(r => ({ ...r, has_pin: !!r.has_pin })) as Staff[]));
     setExpenses(ex.data ?? []);
   }
 
@@ -1315,7 +1318,7 @@ function StaffPage({ staff, reload, setModal }: { staff: Staff[]; reload: () => 
             <tr key={s.id}>
               <td><strong>{s.name}</strong></td>
               <td className="text-muted" style={{ textTransform: "capitalize" }}>{s.role}</td>
-              <td><span style={{ letterSpacing: 4 }}>{s.pin ? "••••" : "—"}</span></td>
+              <td><span style={{ letterSpacing: 4 }}>{s.has_pin ? "••••" : "—"}</span></td>
               <td>
                 <button onClick={() => toggle(s)} className={`badge ${s.active ? "badge-success" : "badge-danger"}`} style={{ border: "none", cursor: "pointer" }}>
                   {s.active ? "Active" : "Inactive"}
@@ -1341,7 +1344,8 @@ function StaffForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => P
   async function save() {
     if (!name.trim()) { alert("Name required"); return; }
     if (!/^\d{4,6}$/.test(pin)) { alert("PIN must be 4-6 digits"); return; }
-    await supabase.from("staff").insert({ name: name.trim(), role, pin, active: true });
+    const { error } = await supabase.rpc("create_staff_with_pin", { _name: name.trim(), _role: role, _pin: pin });
+    if (error) { alert(error.message || "Failed to create staff"); return; }
     await onSaved();
   }
   return <Modal title="Add Staff" setModal={onClose as any} body={
@@ -1373,15 +1377,15 @@ function ChangePinForm({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   async function save() {
-    if (staff.pin && staff.pin !== oldPin) { alert("Current PIN is incorrect"); return; }
     if (!/^\d{4,6}$/.test(newPin)) { alert("New PIN must be 4-6 digits"); return; }
     if (newPin !== confirmPin) { alert("New PINs do not match"); return; }
-    await supabase.from("staff").update({ pin: newPin }).eq("id", staff.id);
+    const { error } = await supabase.rpc("set_staff_pin", { _staff_id: staff.id, _old_pin: oldPin || "", _new_pin: newPin });
+    if (error) { alert(error.message || "Failed to update PIN"); return; }
     await onSaved();
   }
   return <Modal title={`Change PIN — ${staff.name}`} setModal={onClose as any} body={
     <>
-      {staff.pin && (
+      {staff.has_pin && (
         <div className="form-group"><label className="form-label">Current PIN</label>
           <input className="form-input" type="password" maxLength={6} value={oldPin} onChange={(e) => setOldPin(e.target.value)} />
         </div>
