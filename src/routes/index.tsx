@@ -1344,7 +1344,8 @@ function StaffForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => P
   async function save() {
     if (!name.trim()) { alert("Name required"); return; }
     if (!/^\d{4,6}$/.test(pin)) { alert("PIN must be 4-6 digits"); return; }
-    await supabase.from("staff").insert({ name: name.trim(), role, pin, active: true });
+    const { error } = await supabase.rpc("create_staff_with_pin", { _name: name.trim(), _role: role, _pin: pin });
+    if (error) { alert(error.message || "Failed to create staff"); return; }
     await onSaved();
   }
   return <Modal title="Add Staff" setModal={onClose as any} body={
