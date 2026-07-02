@@ -1318,7 +1318,7 @@ function StaffPage({ staff, reload, setModal }: { staff: Staff[]; reload: () => 
             <tr key={s.id}>
               <td><strong>{s.name}</strong></td>
               <td className="text-muted" style={{ textTransform: "capitalize" }}>{s.role}</td>
-              <td><span style={{ letterSpacing: 4 }}>{s.pin ? "••••" : "—"}</span></td>
+              <td><span style={{ letterSpacing: 4 }}>{s.has_pin ? "••••" : "—"}</span></td>
               <td>
                 <button onClick={() => toggle(s)} className={`badge ${s.active ? "badge-success" : "badge-danger"}`} style={{ border: "none", cursor: "pointer" }}>
                   {s.active ? "Active" : "Inactive"}
