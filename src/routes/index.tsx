@@ -1014,14 +1014,21 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
     await reload();
   }
 
+  function csvSafe(val: unknown): string {
+    let s = String(val ?? "");
+    // Neutralise formula injection triggers (=, +, -, @, |, %, tab, CR)
+    if (/^[=+\-@|%\t\r]/.test(s)) s = "'" + s;
+    // Wrap in double quotes and escape internal quotes
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
   function exportExcel(rows: Sale[], label: string) {
     const header = ["Invoice", "Date", "Customer", "Staff", "Subtotal", "Discount", "Total", "Paid", "Due"];
-    const csv = [header.join(",")].concat(
+    const csv = [header.map(csvSafe).join(",")].concat(
       rows.map(s => [
-        s.invoice_no,
-        new Date(s.created_at).toLocaleDateString(),
-        (s.customers?.name || "Walk-in").replace(/,/g, " "),
-        (s.staff?.name || "").replace(/,/g, " "),
+        csvSafe(s.invoice_no),
+        csvSafe(new Date(s.created_at).toLocaleDateString()),
+        csvSafe(s.customers?.name || "Walk-in"),
+        csvSafe(s.staff?.name || ""),
         Number(s.subtotal).toFixed(2),
         Number(s.discount).toFixed(2),
         Number(s.total).toFixed(2),
@@ -1030,11 +1037,12 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
       ].join(",")),
     ).join("\n");
     const total = rows.reduce((a, s) => a + Number(s.total), 0);
-    const blob = new Blob(["\ufeff" + csv + `\n,,,,,,Total,,${total.toFixed(2)}`], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\ufeff" + csv + `\n,,,,,,${csvSafe("Total")},,${total.toFixed(2)}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `Sales-${label}-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
     URL.revokeObjectURL(url);
   }
+
   function exportPDF(rows: Sale[], label: string) {
     const total = rows.reduce((a, s) => a + Number(s.total), 0);
     const w = window.open("", "_blank", "width=900,height=700");
