@@ -21,7 +21,8 @@ export const Route = createFileRoute("/")({
 });
 
 // ---------- types ----------
-type Staff = { id: string; name: string; role: string; pin: string | null; active: boolean };
+type Staff = { id: string; name: string; role: string; has_pin: boolean; active: boolean };
+const STAFF_COLS = "id,name,role,active,has_pin,created_at";
 type Product = { id: string; name: string; category: string | null; barcode: string | null; price: number; cost: number; stock: number; low_stock_threshold: number };
 type Customer = { id: string; name: string; phone: string | null; address: string | null; total_purchase: number; points: number; created_at: string };
 type Sale = { id: string; invoice_no: string; customer_id: string | null; staff_id: string | null; subtotal: number; discount: number; total: number; paid: number; due: number; created_at: string; customers?: { name: string } | null; staff?: { name: string } | null };
