@@ -935,10 +935,14 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
   const daysSinceSat = (todayDow + 1) % 7; // Sat=6→0, Sun=0→1, ... Fri=5→6
   const satStart = new Date(now0); satStart.setHours(0, 0, 0, 0); satStart.setDate(satStart.getDate() - daysSinceSat);
   const dayTotals = Array(7).fill(0) as number[];
+  const localKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   for (let i = 0; i < 7; i++) {
     const d = new Date(satStart); d.setDate(satStart.getDate() + i);
-    const key = d.toISOString().slice(0, 10);
-    dayTotals[i] = sales.filter(s => s.created_at.startsWith(key)).reduce((a, s) => a + Number(s.total), 0);
+    const key = localKey(d);
+    dayTotals[i] = sales
+      .filter(s => localKey(new Date(s.created_at)) === key)
+      .reduce((a, s) => a + Number(s.total), 0);
   }
   const maxV = Math.max(...dayTotals, 1);
   const todayIdx = daysSinceSat; // index of today in the Sat→Fri row
