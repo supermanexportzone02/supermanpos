@@ -227,7 +227,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
     setCustomers(c.data ?? []);
     setSales((s.data as Sale[]) ?? []);
     setSaleItems(si.data ?? []);
-    setStaffAll(st.data ?? []);
+    setStaffAll(((st.data ?? []).map(r => ({ ...r, has_pin: !!r.has_pin })) as Staff[]));
     setExpenses(ex.data ?? []);
   }
 
