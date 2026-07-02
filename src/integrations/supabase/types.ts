@@ -213,25 +213,31 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          has_pin: boolean | null
           id: string
           name: string
           pin: string | null
+          pin_hash: string | null
           role: string
         }
         Insert: {
           active?: boolean
           created_at?: string
+          has_pin?: boolean | null
           id?: string
           name: string
           pin?: string | null
+          pin_hash?: string | null
           role?: string
         }
         Update: {
           active?: boolean
           created_at?: string
+          has_pin?: boolean | null
           id?: string
           name?: string
           pin?: string | null
+          pin_hash?: string | null
           role?: string
         }
         Relationships: []
@@ -241,7 +247,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_staff_with_pin: {
+        Args: { _name: string; _pin: string; _role: string }
+        Returns: string
+      }
+      set_staff_pin: {
+        Args: { _new_pin: string; _old_pin: string; _staff_id: string }
+        Returns: boolean
+      }
+      verify_staff_pin: {
+        Args: { _pin: string; _staff_id: string }
+        Returns: {
+          active: boolean
+          has_pin: boolean
+          id: string
+          name: string
+          role: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
