@@ -656,7 +656,7 @@ function showInvoice(d: {
       <div style="border-top:2px solid #000;margin-top:5px;padding-top:3px;font-size:11px;font-weight:800;line-height:1.3;">
         <div style="display:flex;justify-content:space-between;"><span>Subtotal</span><span>${Math.round(d.subtotal)}</span></div>
         <div style="display:flex;justify-content:space-between;"><span>Discount</span><span>- ${Math.round(d.discAmt)}</span></div>
-        <div style="display:flex;justify-content:space-between;gap:4px;font-weight:900;font-size:13px;border-top:2px solid #000;border-bottom:2px solid #000;margin:3px 0;padding:3px 0;"><span>Total</span><span style="white-space:nowrap;">${Math.round(d.total)}</span></div>
+        <div style="display:flex;justify-content:space-between;gap:4px;font-weight:900;font-size:13px;border-top:2px solid #000;border-bottom:2px solid #000;margin:3px 0;padding:3px 0;"><span>Total</span><span>${Math.round(d.total)}</span></div>
         <div style="display:flex;justify-content:space-between;"><span>Paid</span><span>${Math.round(d.paid)}</span></div>
         ${d.due > 0 ? `<div style="display:flex;justify-content:space-between;font-weight:900;"><span>Due</span><span>${Math.round(d.due)}</span></div>` : ""}
       </div>
