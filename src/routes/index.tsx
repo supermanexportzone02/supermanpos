@@ -1379,7 +1379,7 @@ function ChangePinForm({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
   async function save() {
     if (!/^\d{4,6}$/.test(newPin)) { alert("New PIN must be 4-6 digits"); return; }
     if (newPin !== confirmPin) { alert("New PINs do not match"); return; }
-    const { error } = await supabase.rpc("set_staff_pin", { _staff_id: staff.id, _old_pin: oldPin || null, _new_pin: newPin });
+    const { error } = await supabase.rpc("set_staff_pin", { _staff_id: staff.id, _old_pin: oldPin || "", _new_pin: newPin });
     if (error) { alert(error.message || "Failed to update PIN"); return; }
     await onSaved();
   }
