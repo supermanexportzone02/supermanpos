@@ -218,7 +218,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
       supabase.from("customers").select("*").order("name"),
       supabase.from("sales").select("*, customers(name), staff(name)").order("created_at", { ascending: false }),
       supabase.from("sale_items").select("*"),
-      supabase.from("staff").select("*").order("created_at"),
+      supabase.from("staff").select(STAFF_COLS).order("created_at"),
       supabase.from("expenses").select("*").order("created_at", { ascending: false }),
     ]);
     setProducts(p.data ?? []);
