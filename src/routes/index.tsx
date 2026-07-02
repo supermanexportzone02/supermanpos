@@ -60,8 +60,8 @@ function POSApp() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("staff").select("*").eq("active", true).order("created_at");
-      const list = data ?? [];
+      const { data } = await supabase.from("staff").select(STAFF_COLS).eq("active", true).order("created_at");
+      const list = (data ?? []).map(r => ({ ...r, has_pin: !!r.has_pin })) as Staff[];
       setStaffList(list);
       // Restore session if previously logged in
       try {
