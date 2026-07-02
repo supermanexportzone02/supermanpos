@@ -835,16 +835,22 @@ function ProductForm({ editing, products, onClose, onSaved }: { editing?: Produc
 
 // ---------- CUSTOMERS ----------
 function CustomersPage({ customers, reload, setModal }: { customers: Customer[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
-  function openForm() {
-    setModal(<CustomerForm onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+  function openForm(edit?: Customer) {
+    setModal(<CustomerForm initial={edit} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+  }
+  async function del(c: Customer) {
+    if (!confirm(`Delete customer "${c.name}"? This cannot be undone.`)) return;
+    const { error } = await supabase.from("customers").delete().eq("id", c.id);
+    if (error) { alert("Delete failed: " + error.message + "\n(This customer may be linked to existing sales.)"); return; }
+    await reload();
   }
   return (
     <div className="card">
       <div className="card-title">Customer List
-        <button className="btn btn-primary btn-sm" onClick={openForm}><Plus size={14} /> New Customer</button>
+        <button className="btn btn-primary btn-sm" onClick={() => openForm()}><Plus size={14} /> New Customer</button>
       </div>
       <table>
-        <thead><tr><th>Name</th><th>Phone</th><th>Total Purchase</th><th>Points</th><th>Added</th></tr></thead>
+        <thead><tr><th>Name</th><th>Phone</th><th>Total Purchase</th><th>Points</th><th>Added</th><th style={{ width: 110, textAlign: "right" }}>Actions</th></tr></thead>
         <tbody>
           {customers.map(c => (
             <tr key={c.id}>
@@ -853,23 +859,38 @@ function CustomersPage({ customers, reload, setModal }: { customers: Customer[];
               <td>{fmt(Number(c.total_purchase))}</td>
               <td><span className="badge badge-blue">{c.points} pts</span></td>
               <td>{new Date(c.created_at).toLocaleDateString()}</td>
+              <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                <button className="btn btn-sm" title="Edit" onClick={() => openForm(c)} style={{ marginRight: 6 }}><Edit size={14} /></button>
+                <button className="btn btn-sm btn-danger" title="Delete" onClick={() => del(c)}><Trash2 size={14} /></button>
+              </td>
             </tr>
           ))}
-          {customers.length === 0 && <tr><td colSpan={5} className="empty-row">No customers yet</td></tr>}
+          {customers.length === 0 && <tr><td colSpan={6} className="empty-row">No customers yet</td></tr>}
         </tbody>
       </table>
     </div>
   );
 }
 
-function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: (created?: { id: string; name: string }) => Promise<void> | void }) {
-  const [name, setName] = useState(""); const [phone, setPhone] = useState(""); const [address, setAddress] = useState("");
+function CustomerForm({ onClose, onSaved, initial }: { onClose: () => void; onSaved: (created?: { id: string; name: string }) => Promise<void> | void; initial?: Customer }) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [phone, setPhone] = useState(initial?.phone ?? "");
+  const [address, setAddress] = useState(initial?.address ?? "");
+  const isEdit = !!initial;
   async function save() {
     if (!name.trim()) { alert("Name is required"); return; }
-    const { data } = await supabase.from("customers").insert({ name: name.trim(), phone: phone.trim() || null, address: address.trim() || null }).select("id, name").single();
-    await onSaved(data ?? undefined);
+    const payload = { name: name.trim(), phone: phone.trim() || null, address: address.trim() || null };
+    if (isEdit) {
+      const { error } = await supabase.from("customers").update(payload).eq("id", initial!.id);
+      if (error) { alert("Update failed: " + error.message); return; }
+      await onSaved({ id: initial!.id, name: payload.name });
+    } else {
+      const { data, error } = await supabase.from("customers").insert(payload).select("id, name").single();
+      if (error) { alert("Save failed: " + error.message); return; }
+      await onSaved(data ?? undefined);
+    }
   }
-  return <Modal title="New Customer" setModal={onClose as any} body={
+  return <Modal title={isEdit ? "Edit Customer" : "New Customer"} setModal={onClose as any} body={
     <>
       <div className="form-group"><label className="form-label">Name *</label><input className="form-input" value={name} onChange={(e) => setName(e.target.value)} /></div>
       <div className="form-group"><label className="form-label">Phone</label><input className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01XXX-XXXXXX" /></div>
@@ -877,7 +898,7 @@ function CustomerForm({ onClose, onSaved }: { onClose: () => void; onSaved: (cre
     </>
   } actions={[
     { label: "Cancel", onClick: onClose },
-    { label: "Save", primary: true, icon: <Check size={14} />, onClick: save },
+    { label: isEdit ? "Update" : "Save", primary: true, icon: <Check size={14} />, onClick: save },
   ]} />;
 }
 
