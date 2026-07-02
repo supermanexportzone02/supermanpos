@@ -97,8 +97,8 @@ function POSApp() {
           setCurrentUser({ ...s, colorIdx: idx });
         }}
         reload={async () => {
-          const { data } = await supabase.from("staff").select("*").eq("active", true).order("created_at");
-          setStaffList(data ?? []);
+          const { data } = await supabase.from("staff").select(STAFF_COLS).eq("active", true).order("created_at");
+          setStaffList(((data ?? []).map(r => ({ ...r, has_pin: !!r.has_pin })) as Staff[]));
         }}
       />
     );
