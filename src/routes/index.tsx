@@ -1377,15 +1377,15 @@ function ChangePinForm({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   async function save() {
-    if (staff.pin && staff.pin !== oldPin) { alert("Current PIN is incorrect"); return; }
     if (!/^\d{4,6}$/.test(newPin)) { alert("New PIN must be 4-6 digits"); return; }
     if (newPin !== confirmPin) { alert("New PINs do not match"); return; }
-    await supabase.from("staff").update({ pin: newPin }).eq("id", staff.id);
+    const { error } = await supabase.rpc("set_staff_pin", { _staff_id: staff.id, _old_pin: oldPin || null, _new_pin: newPin });
+    if (error) { alert(error.message || "Failed to update PIN"); return; }
     await onSaved();
   }
   return <Modal title={`Change PIN — ${staff.name}`} setModal={onClose as any} body={
     <>
-      {staff.pin && (
+      {staff.has_pin && (
         <div className="form-group"><label className="form-label">Current PIN</label>
           <input className="form-input" type="password" maxLength={6} value={oldPin} onChange={(e) => setOldPin(e.target.value)} />
         </div>
