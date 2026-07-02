@@ -124,15 +124,17 @@ function Login({ staffList, onLogin, reload }: { staffList: Staff[]; onLogin: (s
 
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, []);
 
-  function tryLogin() {
+  async function tryLogin() {
     if (selected === null) return;
     const s = staffList[selected];
-    if (s.pin && s.pin !== pin) {
+    const { data, error: rpcErr } = await supabase.rpc("verify_staff_pin", { _staff_id: s.id, _pin: pin });
+    if (rpcErr || !Array.isArray(data) || data.length === 0) {
       setError("Wrong PIN. Try again.");
       setPin("");
       return;
     }
-    onLogin(s, selected);
+    const verified = data[0] as Staff;
+    onLogin({ ...verified, has_pin: !!verified.has_pin }, selected);
   }
 
   return (
