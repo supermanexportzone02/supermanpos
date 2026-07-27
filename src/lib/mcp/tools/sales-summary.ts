@@ -40,7 +40,7 @@ export default defineTool({
 
     const sales = salesRes.data ?? [];
     const expenses = expenseRes.data ?? [];
-    const sum = (rows: Array<Record<string, number>>, key: string) =>
+    const sum = (rows: Array<Record<string, unknown>>, key: string) =>
       rows.reduce((acc, row) => acc + Number(row[key] ?? 0), 0);
 
     const revenue = sum(sales, "total");
