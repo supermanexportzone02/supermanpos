@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://acrqxbwjxffltdulzgbq.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "superman-pos-mcp",
+      "version": "0.1.0",
+      "title": "Superman Export Zone POS"
+    },
+    "tools": [
+      {
+        "name": "list_products",
+        "title": "List products",
+        "description": "List products in the POS inventory, optionally filtered by a name/barcode search term or category.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "search": {
+              "type": "string",
+              "description": "Match product name or barcode."
+            },
+            "category": {
+              "type": "string",
+              "description": "Filter by category name."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Max rows to return (default 50, max 200)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "low_stock_products",
+        "title": "Low stock products",
+        "description": "List products whose stock is at or below their low-stock threshold.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_customers",
+        "title": "Search customers",
+        "description": "Search POS customers by name or phone number.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "search": {
+              "type": "string",
+              "description": "Match customer name or phone."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Max rows to return (default 25, max 100)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "recent_sales",
+        "title": "Recent sales",
+        "description": "List recent sales invoices with their line items, newest first. Optionally limited to a date range (ISO dates).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "Start date, ISO format e.g. 2026-07-01."
+            },
+            "to": {
+              "type": "string",
+              "description": "End date, ISO format e.g. 2026-07-27."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Max invoices to return (default 20, max 100)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "sales_summary",
+        "title": "Sales summary",
+        "description": "Summarize revenue, discounts, invoice count, expenses and net cash for a date range (defaults to the last 30 days).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "Start date, ISO format e.g. 2026-07-01."
+            },
+            "to": {
+              "type": "string",
+              "description": "End date, ISO format e.g. 2026-07-27."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
