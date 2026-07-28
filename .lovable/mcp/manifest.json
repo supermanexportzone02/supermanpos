@@ -47,6 +47,32 @@
         "outputSchema": null
       },
       {
+        "name": "lookup_barcode",
+        "title": "Look up product by barcode",
+        "description": "Look up a single product by a scanned barcode value and return its current stock, price, cost and low-stock status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "barcode": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Scanned barcode value."
+            }
+          },
+          "required": [
+            "barcode"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "low_stock_products",
         "title": "Low stock products",
         "description": "List products whose stock is at or below their low-stock threshold.",
