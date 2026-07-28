@@ -1365,13 +1365,15 @@ function StaffPage({ staff, actorId, reload, setModal }: { staff: Staff[]; actor
   );
 }
 
-function StaffForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => Promise<void> }) {
+function StaffForm({ actorId, onClose, onSaved }: { actorId: string; onClose: () => void; onSaved: () => Promise<void> }) {
   const [name, setName] = useState(""); const [role, setRole] = useState("salesman"); const [pin, setPin] = useState("");
+  const [actorPin, setActorPin] = useState("");
   async function save() {
     if (!name.trim()) { alert("Name required"); return; }
     if (!/^\d{4,6}$/.test(pin)) { alert("PIN must be 4-6 digits"); return; }
-    const { error } = await supabase.rpc("create_staff_with_pin", { _name: name.trim(), _role: role, _pin: pin });
-    if (error) { alert(error.message || "Failed to create staff"); return; }
+    if (!actorPin) { alert("Enter your own admin PIN to confirm"); return; }
+    const { error } = await supabase.rpc("create_staff_with_pin", { _actor_id: actorId, _actor_pin: actorPin, _name: name.trim(), _role: role, _pin: pin });
+    if (error) { alert(error.message?.includes("Not authorized") ? "Your admin PIN is wrong or you are not an Admin/Owner." : (error.message || "Failed to create staff")); return; }
     await onSaved();
   }
   return <Modal title="Add Staff" setModal={onClose as any} body={
@@ -1391,6 +1393,9 @@ function StaffForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => P
           <input className="form-input" type="password" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value)} />
         </div>
       </div>
+      <div className="form-group"><label className="form-label">Your admin PIN (confirm) *</label>
+        <input className="form-input" type="password" maxLength={6} value={actorPin} onChange={(e) => setActorPin(e.target.value)} />
+      </div>
     </>
   } actions={[
     { label: "Cancel", onClick: onClose },
@@ -1398,18 +1403,24 @@ function StaffForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => P
   ]} />;
 }
 
-function ChangePinForm({ staff, onClose, onSaved }: { staff: Staff; onClose: () => void; onSaved: () => Promise<void> }) {
+function ChangePinForm({ staff, actorId, onClose, onSaved }: { staff: Staff; actorId: string; onClose: () => void; onSaved: () => Promise<void> }) {
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
+  const [actorPin, setActorPin] = useState("");
   async function save() {
     if (!/^\d{4,6}$/.test(newPin)) { alert("New PIN must be 4-6 digits"); return; }
     if (newPin !== confirmPin) { alert("New PINs do not match"); return; }
-    const { error } = await supabase.rpc("set_staff_pin", { _staff_id: staff.id, _old_pin: "", _new_pin: newPin });
-    if (error) { alert(error.message || "Failed to update PIN"); return; }
+    if (!actorPin) { alert("Enter your own PIN to confirm"); return; }
+    const { error } = await supabase.rpc("set_staff_pin", { _actor_id: actorId, _actor_pin: actorPin, _staff_id: staff.id, _new_pin: newPin });
+    if (error) { alert(error.message?.includes("Not authorized") ? "Your PIN is wrong or you are not allowed to change this PIN." : (error.message || "Failed to update PIN")); return; }
     await onSaved();
   }
   return <Modal title={`Change PIN — ${staff.name}`} setModal={onClose as any} body={
     <>
+      <div className="form-group"><label className="form-label">Your own PIN (confirm) *</label>
+        <input className="form-input" type="password" maxLength={6} value={actorPin} onChange={(e) => setActorPin(e.target.value)} />
+      </div>
+
 
       <div className="form-grid">
         <div className="form-group"><label className="form-label">New PIN (4-6 digits)</label>
