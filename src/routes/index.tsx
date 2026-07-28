@@ -301,7 +301,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
           {page === "customers" && <CustomersPage customers={customers} reload={loadAll} setModal={setModal} />}
           {page === "expenses" && <ExpensesPage expenses={expenses} user={user} reload={loadAll} setModal={setModal} />}
           {page === "reports" && <Reports sales={sales} saleItems={saleItems} products={products} expenses={expenses} reload={loadAll} setModal={setModal} />}
-          {page === "staff" && <StaffPage staff={staffAll} reload={loadAll} setModal={setModal} />}
+          {page === "staff" && <StaffPage staff={staffAll} actorId={user.id} reload={loadAll} setModal={setModal} />}
         </div>
       </main>
 
