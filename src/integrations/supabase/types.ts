@@ -248,11 +248,26 @@ export type Database = {
     }
     Functions: {
       create_staff_with_pin: {
-        Args: { _name: string; _pin: string; _role: string }
+        Args: {
+          _actor_id: string
+          _actor_pin: string
+          _name: string
+          _pin: string
+          _role: string
+        }
         Returns: string
       }
+      is_staff_admin: {
+        Args: { _actor_id: string; _actor_pin: string }
+        Returns: boolean
+      }
       set_staff_pin: {
-        Args: { _new_pin: string; _old_pin: string; _staff_id: string }
+        Args: {
+          _actor_id: string
+          _actor_pin: string
+          _new_pin: string
+          _staff_id: string
+        }
         Returns: boolean
       }
       verify_staff_pin: {
