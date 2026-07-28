@@ -1315,13 +1315,14 @@ function EditSaleForm({ sale, onClose, onSaved }: { sale: Sale; onClose: () => v
 
 
 // ---------- STAFF ----------
-function StaffPage({ staff, reload, setModal }: { staff: Staff[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
+function StaffPage({ staff, actorId, reload, setModal }: { staff: Staff[]; actorId: string; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
   function openForm() {
-    setModal(<StaffForm onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+    setModal(<StaffForm actorId={actorId} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
   }
   function openChangePin(s: Staff) {
-    setModal(<ChangePinForm staff={s} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+    setModal(<ChangePinForm staff={s} actorId={actorId} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
   }
+
   async function del(s: Staff) {
     if (!confirm(`Delete staff "${s.name}"?`)) return;
     await supabase.from("staff").delete().eq("id", s.id);
