@@ -113,28 +113,31 @@ function POSApp() {
 
 // ---------- LOGIN ----------
 function Login({ staffList, onLogin, reload }: { staffList: Staff[]; onLogin: (s: Staff, idx: number) => void; reload: () => void }) {
-  const [selected, setSelected] = useState<number | null>(null);
+  const [username, setUsername] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
-  const pinRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const userRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (selected !== null) pinRef.current?.focus();
-  }, [selected]);
-
+  useEffect(() => { userRef.current?.focus(); }, []);
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, []);
 
   async function tryLogin() {
-    if (selected === null) return;
-    const s = staffList[selected];
+    const uname = username.trim().toLowerCase();
+    if (!uname || !pin) { setError("Enter username and password."); return; }
+    const idx = staffList.findIndex(s => s.name.trim().toLowerCase() === uname);
+    if (idx === -1) { setError("Invalid username or password."); setPin(""); return; }
+    setBusy(true);
+    const s = staffList[idx];
     const { data, error: rpcErr } = await supabase.rpc("verify_staff_pin", { _staff_id: s.id, _pin: pin });
+    setBusy(false);
     if (rpcErr || !Array.isArray(data) || data.length === 0) {
-      setError("Wrong PIN. Try again.");
+      setError("Invalid username or password.");
       setPin("");
       return;
     }
     const verified = data[0] as Staff;
-    onLogin({ ...verified, has_pin: !!verified.has_pin }, selected);
+    onLogin({ ...verified, has_pin: !!verified.has_pin }, idx);
   }
 
   return (
@@ -148,50 +151,39 @@ function Login({ staffList, onLogin, reload }: { staffList: Staff[]; onLogin: (s
           </div>
         </div>
         <div className="login-divider" />
-        <div className="login-sub">Select staff to continue</div>
-        <div>
-          {staffList.length === 0 && (
-            <div className="text-muted" style={{ fontSize: 13, padding: 12 }}>No staff configured.</div>
-          )}
-          {staffList.map((s, i) => (
-            <button
-              key={s.id}
-              className={`staff-btn ${selected === i ? "selected" : ""}`}
-              onClick={() => { setSelected(i); setError(""); setPin(""); }}
-            >
-              <div className="staff-avatar" style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}>
-                {s.name.substring(0, 2).toUpperCase()}
-              </div>
-              <div className="staff-info">
-                <div className="staff-name">{s.name}</div>
-                <div className="staff-role">{s.role}</div>
-              </div>
-              <ChevronRight size={16} color="var(--text3)" />
-            </button>
-          ))}
+        <div className="login-sub">Sign in with your username &amp; password</div>
+        <div style={{ display: "grid", gap: 10 }}>
+          <input
+            ref={userRef}
+            type="text"
+            className="pin-input"
+            style={{ letterSpacing: 0, textAlign: "left", fontSize: 14 }}
+            placeholder="Username"
+            autoComplete="username"
+            value={username}
+            onChange={(e) => { setUsername(e.target.value); setError(""); }}
+            onKeyDown={(e) => { if (e.key === "Enter") tryLogin(); }}
+          />
+          <input
+            type="password"
+            className="pin-input"
+            style={{ letterSpacing: 0, textAlign: "left", fontSize: 14 }}
+            placeholder="Password"
+            autoComplete="current-password"
+            value={pin}
+            onChange={(e) => { setPin(e.target.value); setError(""); }}
+            onKeyDown={(e) => { if (e.key === "Enter") tryLogin(); }}
+          />
+          <button className="btn-login" disabled={busy} onClick={tryLogin}>
+            <LogOut size={14} style={{ transform: "rotate(180deg)" }} /> {busy ? "Please wait…" : "Login"}
+          </button>
+          {error && <div style={{ color: "var(--danger)", fontSize: 12, textAlign: "center" }}>{error}</div>}
         </div>
-        {selected !== null && (
-          <div>
-            <input
-              ref={pinRef}
-              type="password"
-              className="pin-input"
-              placeholder="Enter PIN"
-              maxLength={6}
-              value={pin}
-              onChange={(e) => { setPin(e.target.value); setError(""); }}
-              onKeyDown={(e) => { if (e.key === "Enter") tryLogin(); }}
-            />
-            <button className="btn-login" onClick={tryLogin}>
-              <LogOut size={14} style={{ transform: "rotate(180deg)" }} /> Login
-            </button>
-            {error && <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 6, textAlign: "center" }}>{error}</div>}
-          </div>
-        )}
       </div>
     </div>
   );
 }
+
 
 // ---------- SHELL ----------
 type PageKey = "dashboard" | "sales" | "inventory" | "customers" | "expenses" | "reports" | "staff" | "settings";
