@@ -389,6 +389,9 @@ function POS({
 }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
+  const [scan, setScan] = useState("");
+  const [scanMsg, setScanMsg] = useState("");
+
   const [cat, setCat] = useState<string>("All");
   const [customerId, setCustomerId] = useState<string>("");
   const [discount, setDiscount] = useState<string>("");
