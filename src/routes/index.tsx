@@ -484,22 +484,50 @@ function POS({
     await onAfterCheckout();
   }
 
+  async function handleScan(raw: string) {
+    const code = raw.trim();
+    if (!code) return;
+    setScanMsg("Looking up…");
+    let match: Product | undefined = products.find(p => (p.barcode || "").toLowerCase() === code.toLowerCase());
+    if (!match) {
+      const { data } = await supabase
+        .from("products")
+        .select("id,name,category,barcode,price,cost,stock,low_stock_threshold")
+        .eq("barcode", code)
+        .limit(1);
+      match = (data?.[0] as Product | undefined);
+    }
+    if (!match) { setScanMsg(`❌ No product for barcode "${code}"`); return; }
+    if (match.stock <= 0) { setScanMsg(`⚠️ ${match.name} is out of stock`); setScan(""); return; }
+    addToCart(match);
+    setScanMsg(`✓ ${match.name} added — ${fmt(Number(match.price))} · ${match.stock} in stock`);
+    setScan("");
+  }
+
   return (
     <div className="pos-layout">
       <div className="pos-left">
         <div className="search-row">
           <input
             className="search-input"
-            placeholder="🔍 Search product or scan barcode..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            placeholder="📷 Scan barcode here…"
+            value={scan}
+            onChange={(e) => setScan(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleScan(scan); } }}
             autoFocus
           />
-          <button className="btn" onClick={() => {
-            const match = products.find(p => p.barcode && p.barcode.toLowerCase() === search.toLowerCase());
-            if (match) { addToCart(match); setSearch(""); }
-          }}><Barcode size={14} /> Scan</button>
+          <button className="btn" onClick={() => void handleScan(scan)}><Barcode size={14} /> Add</button>
         </div>
+        {scanMsg && <div style={{ fontSize: 12, margin: "-4px 0 8px", opacity: 0.85 }}>{scanMsg}</div>}
+        <div className="search-row">
+          <input
+            className="search-input"
+            placeholder="🔍 Search product by name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
         <div className="cat-tabs">
           {categories.map(c => (
             <button key={c} className={`cat-tab ${cat === c ? "active" : ""}`} onClick={() => setCat(c)}>{c}</button>
