@@ -1,0 +1,1 @@
+Invoice editing eligibility lives in `src/lib/invoice-permissions.ts` so the Reports UI shares one role rule and its test covers every allowed role.
