@@ -8,6 +8,7 @@ import {
   FileSpreadsheet, FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { canEditInvoices } from "@/lib/invoice-permissions";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -15,6 +16,10 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Superman Export Zone — POS" },
       { name: "description", content: "POS & Billing Software for Superman Export Zone" },
+      { property: "og:title", content: "Superman Export Zone — POS & Billing" },
+      { property: "og:description", content: "Sales, billing, inventory, and reporting for Superman Export Zone." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: POSApp,
@@ -300,7 +305,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
           {page === "inventory" && <Inventory products={products} reload={loadAll} setModal={setModal} />}
           {page === "customers" && <CustomersPage customers={customers} reload={loadAll} setModal={setModal} />}
           {page === "expenses" && <ExpensesPage expenses={expenses} user={user} reload={loadAll} setModal={setModal} />}
-          {page === "reports" && <Reports sales={sales} saleItems={saleItems} products={products} expenses={expenses} reload={loadAll} setModal={setModal} />}
+          {page === "reports" && <Reports sales={sales} saleItems={saleItems} products={products} customers={customers} user={user} expenses={expenses} reload={loadAll} setModal={setModal} />}
           {page === "staff" && <StaffPage staff={staffAll} actorId={user.id} reload={loadAll} setModal={setModal} />}
         </div>
       </main>
