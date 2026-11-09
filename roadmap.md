@@ -1,0 +1,4 @@
+- [ ] Add a transaction-safe invoice update function that adjusts stock and customer summaries.
+- [ ] Expand Reports invoice editing and limit its actions to Admin, Manager, and Owner roles.
+- [ ] Test role eligibility and verify a complete invoice edit in the preview.
+- [ ] Apply the required package update and confirm the build remains green.

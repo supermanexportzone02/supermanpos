@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794224042375,
+      "tag": "0000_add_atomic_invoice_edit_function",
+      "breakpoints": true
+    }
+  ]
+}
