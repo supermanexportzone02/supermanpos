@@ -1052,7 +1052,7 @@ function Reports({ sales, saleItems, products, customers, staff, user, expenses,
   }
   function editSale(s: Sale) {
     if (!canEditInvoices(user.role)) return;
-    setModal(<EditSaleForm sale={s} products={products} customers={customers} staff={staff.filter(member => member.active)} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+    setModal(<EditSaleForm sale={s} products={products} customers={customers} staff={staff.filter(member => member.active)} setModal={setModal} onClose={() => setModal(null)} onSaved={reload} />);
   }
   async function deleteSale(s: Sale) {
     if (!confirm(`Delete invoice ${s.invoice_no}? This will restore stock and remove the record.`)) return;
@@ -1304,7 +1304,7 @@ async function openInvoiceFromSale(s: Sale, _allItems: SaleItem[], setModal: (n:
   }, setModal);
 }
 
-function EditSaleForm({ sale, products, customers, staff, onClose, onSaved }: { sale: Sale; products: Product[]; customers: Customer[]; staff: Staff[]; onClose: () => void; onSaved: () => void }) {
+function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onSaved }: { sale: Sale; products: Product[]; customers: Customer[]; staff: Staff[]; setModal: (node: React.ReactNode) => void; onClose: () => void; onSaved: () => Promise<void> }) {
   const [invoiceNo, setInvoiceNo] = useState(sale.invoice_no);
   const [createdAt, setCreatedAt] = useState(() => {
     const timestamp = new Date(sale.created_at);
@@ -1317,6 +1317,7 @@ function EditSaleForm({ sale, products, customers, staff, onClose, onSaved }: { 
   const [actorId, setActorId] = useState("");
   const [actorPin, setActorPin] = useState("");
   const [items, setItems] = useState<CartItem[]>([]);
+  const [originalItems, setOriginalItems] = useState<SaleItem[]>([]);
   const [itemSearch, setItemSearch] = useState("");
   const [loadingItems, setLoadingItems] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1331,6 +1332,7 @@ function EditSaleForm({ sale, products, customers, staff, onClose, onSaved }: { 
       if (loadError) {
         setError(loadError.message);
       } else {
+        setOriginalItems((data ?? []) as SaleItem[]);
         setItems((data ?? []).map(item => ({
           id: item.product_id || item.id,
           name: item.product_name,
@@ -1367,7 +1369,7 @@ function EditSaleForm({ sale, products, customers, staff, onClose, onSaved }: { 
         if (existing.qty >= existing.stock) return previous;
         return previous.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item);
       }
-      const availableStock = Number(product.stock) + Number(saleItems.reduce((sum, entry) => sum + (entry.sale_id === sale.id && entry.product_id === product.id ? Number(entry.quantity) : 0), 0));
+      const availableStock = Number(product.stock) + Number(originalItems.reduce((sum, entry) => sum + (entry.product_id === product.id ? Number(entry.quantity) : 0), 0));
       if (availableStock < 1) return previous;
       return [...previous, { id: product.id, name: product.name, price: Number(product.price), qty: 1, stock: availableStock }];
     });
@@ -1414,10 +1416,8 @@ function EditSaleForm({ sale, products, customers, staff, onClose, onSaved }: { 
       invoice_no: invoiceNo.trim(), items, subtotal, discAmt: discountAmount, total, paid: paidAmount, due,
       staff: actingStaff?.name || sale.staff?.name || "—", customer: customer?.name || "Walk-in",
       customer_phone: customer?.phone || "", date: timestamp,
-    }, onCloseModal => {
-      onCloseModal(null);
-    });
-    onSaved();
+    }, setModal);
+    await onSaved();
   }
 
   return (
