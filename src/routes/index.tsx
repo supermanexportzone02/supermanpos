@@ -1052,7 +1052,7 @@ function Reports({ sales, saleItems, products, customers, staff, user, expenses,
   }
   function editSale(s: Sale) {
     if (!canEditInvoices(user.role)) return;
-    setModal(<EditSaleForm sale={s} products={products} customers={customers} staff={staff.filter(member => member.active)} setModal={setModal} onClose={() => setModal(null)} onSaved={reload} />);
+    setModal(<EditSaleForm sale={s} products={products} customers={customers} staff={staff.filter(member => member.active)} actorId={user.id} setModal={setModal} onClose={() => setModal(null)} onSaved={reload} />);
   }
   async function deleteSale(s: Sale) {
     if (!confirm(`Delete invoice ${s.invoice_no}? This will restore stock and remove the record.`)) return;
@@ -1304,7 +1304,7 @@ async function openInvoiceFromSale(s: Sale, _allItems: SaleItem[], setModal: (n:
   }, setModal);
 }
 
-function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onSaved }: { sale: Sale; products: Product[]; customers: Customer[]; staff: Staff[]; setModal: (node: React.ReactNode) => void; onClose: () => void; onSaved: () => Promise<void> }) {
+function EditSaleForm({ sale, products, customers, staff, actorId, setModal, onClose, onSaved }: { sale: Sale; products: Product[]; customers: Customer[]; staff: Staff[]; actorId: string; setModal: (node: React.ReactNode) => void; onClose: () => void; onSaved: () => Promise<void> }) {
   const [invoiceNo, setInvoiceNo] = useState(sale.invoice_no);
   const [createdAt, setCreatedAt] = useState(() => {
     const timestamp = new Date(sale.created_at);
@@ -1314,8 +1314,6 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
   const [discountType, setDiscountType] = useState<"percent" | "flat">("flat");
   const [discountInput, setDiscountInput] = useState(String(sale.discount));
   const [paid, setPaid] = useState(String(sale.paid));
-  const [actorId, setActorId] = useState("");
-  const [actorPin, setActorPin] = useState("");
   const [items, setItems] = useState<CartItem[]>([]);
   const [originalItems, setOriginalItems] = useState<SaleItem[]>([]);
   const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
@@ -1324,7 +1322,6 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const itemSearchRef = useRef<HTMLInputElement>(null);
-  const activeStaff = staff.filter(member => canEditInvoices(member.role));
 
   useEffect(() => {
     let mounted = true;
@@ -1383,7 +1380,6 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
     if (!invoiceNo.trim()) { setError("Invoice number is required."); return; }
     if (!createdAt) { setError("Choose the invoice date and time."); return; }
     if (paidAmount < 0) { setError("Paid amount cannot be negative."); return; }
-    if (!actorId || !actorPin) { setError("Select your account and enter your PIN to confirm this change."); return; }
     setSaving(true);
     setError("");
     const timestamp = new Date(createdAt);
@@ -1392,7 +1388,7 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
       setError("Choose a valid invoice date and time.");
       return;
     }
-    const { error: saveError } = await supabase.rpc("update_sale_with_items_authorized", {
+    const { error: saveError } = await supabase.rpc("update_sale_by_staff", {
       _sale_id: sale.id,
       _invoice_no: invoiceNo.trim(),
       _customer_id: customerId || (null as unknown as string),
@@ -1404,11 +1400,10 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
       _created_at: timestamp.toISOString(),
       _items: items.map(item => ({ product_id: products.some(product => product.id === item.id) ? item.id : null, product_name: item.name, price: item.price, quantity: item.qty })),
       _actor_id: actorId,
-      _actor_pin: actorPin,
     });
     setSaving(false);
     if (saveError) {
-      setError(saveError.message.includes("Not authorized") ? "The selected account or PIN is not authorized to edit invoices." : saveError.message);
+      setError(saveError.message.includes("Not authorized") ? "You are not authorized to edit invoices." : saveError.message);
       return;
     }
     const customer = customers.find(entry => entry.id === customerId);
@@ -1504,16 +1499,6 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
           <div className="cart-row"><span>Due</span><strong className={due > 0 ? "text-danger" : "text-success"}>{fmt(due)}</strong></div>
         </div>
 
-        <div className="form-grid">
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Confirming Admin / Manager / Owner</label>
-            <select className="form-select" value={actorId} onChange={event => setActorId(event.target.value)}><option value="">Select account</option>{activeStaff.map(member => <option key={member.id} value={member.id}>{member.name} · {member.role}</option>)}</select>
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Account PIN</label>
-            <input className="form-input" type="password" inputMode="numeric" autoComplete="current-password" value={actorPin} onChange={event => setActorPin(event.target.value)} />
-          </div>
-        </div>
         {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12 }}>{error}</div>}
       </div>
     } actions={[
