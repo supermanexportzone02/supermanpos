@@ -305,7 +305,7 @@ function Shell({ user, onLogout }: { user: Staff & { colorIdx: number }; onLogou
           {page === "inventory" && <Inventory products={products} reload={loadAll} setModal={setModal} />}
           {page === "customers" && <CustomersPage customers={customers} reload={loadAll} setModal={setModal} />}
           {page === "expenses" && <ExpensesPage expenses={expenses} user={user} reload={loadAll} setModal={setModal} />}
-          {page === "reports" && <Reports sales={sales} saleItems={saleItems} products={products} customers={customers} user={user} expenses={expenses} reload={loadAll} setModal={setModal} />}
+          {page === "reports" && <Reports sales={sales} saleItems={saleItems} products={products} customers={customers} staff={staffAll} user={user} expenses={expenses} reload={loadAll} setModal={setModal} />}
           {page === "staff" && <StaffPage staff={staffAll} actorId={user.id} reload={loadAll} setModal={setModal} />}
         </div>
       </main>
@@ -955,7 +955,7 @@ function CustomerSearchModal({ customers, onClose, onPick }: { customers: Custom
 }
 
 // ---------- REPORTS ----------
-function Reports({ sales, saleItems, products, expenses, reload, setModal }: { sales: Sale[]; saleItems: SaleItem[]; products: Product[]; expenses: Expense[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
+function Reports({ sales, saleItems, products, customers, staff, user, expenses, reload, setModal }: { sales: Sale[]; saleItems: SaleItem[]; products: Product[]; customers: Customer[]; staff: Staff[]; user: Staff; expenses: Expense[]; reload: () => Promise<void>; setModal: (n: React.ReactNode) => void }) {
   const today = new Date().toISOString().slice(0, 10);
   const [monthOffset, setMonthOffset] = useState(0);
   const monthDate = new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1);
@@ -1051,7 +1051,8 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
     openInvoiceFromSale(s, saleItems, setModal);
   }
   function editSale(s: Sale) {
-    setModal(<EditSaleForm sale={s} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
+    if (!canEditInvoices(user.role)) return;
+    setModal(<EditSaleForm sale={s} products={products} customers={customers} staff={staff.filter(member => member.active)} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await reload(); }} />);
   }
   async function deleteSale(s: Sale) {
     if (!confirm(`Delete invoice ${s.invoice_no}? This will restore stock and remove the record.`)) return;
@@ -1268,7 +1269,7 @@ function Reports({ sales, saleItems, products, expenses, reload, setModal }: { s
                 <td>
                   <div className="row-actions" style={{ justifyContent: "flex-end" }}>
                     <button className="btn btn-sm btn-icon" title="View / Print" onClick={() => viewInvoice(s)}><Printer size={13} /></button>
-                    <button className="btn btn-sm btn-icon" title="Edit" onClick={() => editSale(s)}><Edit size={13} /></button>
+                    {canEditInvoices(user.role) && <button className="btn btn-sm btn-icon" title="Edit invoice" onClick={() => editSale(s)}><Edit size={13} /></button>}
                     <button className="btn btn-sm btn-icon btn-danger" title="Delete" onClick={() => deleteSale(s)}><Trash2 size={13} /></button>
                   </div>
                 </td>
