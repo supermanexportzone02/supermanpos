@@ -1423,7 +1423,7 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
 
   return (
     <Modal title={`Edit Invoice — ${sale.invoice_no}`} setModal={() => { if (!saving) onClose(); }} body={
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="invoice-editor" style={{ display: "grid", gap: 12 }}>
         <div className="form-grid">
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Invoice number</label>
@@ -1446,7 +1446,14 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Add or search products</label>
           <div style={{ position: "relative" }}>
-            <input ref={itemSearchRef} className="form-input" value={itemSearch} placeholder="Search product name or barcode…" onChange={event => setItemSearch(event.target.value)} />
+            <input ref={itemSearchRef} className="form-input" value={itemSearch} placeholder="Search product name or barcode…" onChange={event => setItemSearch(event.target.value)} onKeyDown={event => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              const exactMatch = products.find(product => product.barcode?.toLowerCase() === itemSearch.trim().toLowerCase())
+                ?? products.find(product => product.name.toLowerCase() === itemSearch.trim().toLowerCase());
+              const match = exactMatch ?? searchMatches[0];
+              if (match) addProduct(match);
+            }} />
             {searchMatches.length > 0 && <div style={{ position: "absolute", zIndex: 1, inset: "100% 0 auto", maxHeight: 190, overflowY: "auto", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 6 }}>
               {searchMatches.map(product => <button key={product.id} type="button" className="btn" style={{ display: "flex", width: "100%", justifyContent: "space-between", border: 0, borderRadius: 0 }} onClick={() => addProduct(product)}><span>{product.name}</span><span>{fmt(Number(product.price))} · {product.stock} in stock</span></button>)}
             </div>}
@@ -1463,7 +1470,7 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
                 <td><input aria-label={`Quantity for ${item.name}`} className="qty-input" type="number" min={1} max={item.stock} value={quantityDrafts[item.id] ?? String(item.qty)} onChange={event => {
                   const raw = event.target.value;
                   setQuantityDrafts(previous => ({ ...previous, [item.id]: raw }));
-                  if (raw && Number.isFinite(Number(raw))) setItemQty(item.id, Number(raw));
+                  if (raw && Number.isFinite(Number(raw)) && Number(raw) >= 1) setItemQty(item.id, Number(raw));
                 }} onBlur={() => {
                   setQuantityDrafts(previous => { const next = { ...previous }; delete next[item.id]; return next; });
                   if (!quantityDrafts[item.id] || Number(quantityDrafts[item.id]) < 1) setItemQty(item.id, item.qty);
