@@ -270,6 +270,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_sale_by_staff: {
+        Args: {
+          _actor_id: string
+          _created_at: string
+          _customer_id: string
+          _discount: number
+          _due: number
+          _invoice_no: string
+          _items: Json
+          _paid: number
+          _sale_id: string
+          _subtotal: number
+          _total: number
+        }
+        Returns: undefined
+      }
       update_sale_with_items: {
         Args: {
           _created_at: string
