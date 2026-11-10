@@ -8,6 +8,13 @@
       "when": 1794224042375,
       "tag": "0000_add_atomic_invoice_edit_function",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794294805485,
+      "tag": "0001_secure_manager_invoice_edit_and_reconcile_items",
+      "breakpoints": true
     }
   ]
 }
