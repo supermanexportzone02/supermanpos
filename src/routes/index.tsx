@@ -1304,48 +1304,206 @@ async function openInvoiceFromSale(s: Sale, _allItems: SaleItem[], setModal: (n:
   }, setModal);
 }
 
-function EditSaleForm({ sale, onClose, onSaved }: { sale: Sale; onClose: () => void; onSaved: () => void }) {
-  const [discount, setDiscount] = useState(String(sale.discount));
+function EditSaleForm({ sale, products, customers, staff, onClose, onSaved }: { sale: Sale; products: Product[]; customers: Customer[]; staff: Staff[]; onClose: () => void; onSaved: () => void }) {
+  const [invoiceNo, setInvoiceNo] = useState(sale.invoice_no);
+  const [createdAt, setCreatedAt] = useState(() => {
+    const timestamp = new Date(sale.created_at);
+    return Number.isNaN(timestamp.getTime()) ? "" : `${timestamp.getFullYear()}-${String(timestamp.getMonth() + 1).padStart(2, "0")}-${String(timestamp.getDate()).padStart(2, "0")}T${String(timestamp.getHours()).padStart(2, "0")}:${String(timestamp.getMinutes()).padStart(2, "0")}`;
+  });
+  const [customerId, setCustomerId] = useState(sale.customer_id ?? "");
+  const [discountType, setDiscountType] = useState<"percent" | "flat">("flat");
+  const [discountInput, setDiscountInput] = useState(String(sale.discount));
   const [paid, setPaid] = useState(String(sale.paid));
+  const [actorId, setActorId] = useState("");
+  const [actorPin, setActorPin] = useState("");
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [itemSearch, setItemSearch] = useState("");
+  const [loadingItems, setLoadingItems] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const itemSearchRef = useRef<HTMLInputElement>(null);
+  const activeStaff = staff.filter(member => canEditInvoices(member.role));
 
-  const discNum = Math.max(0, Number(discount) || 0);
-  const total = Math.max(0, Number(sale.subtotal) - discNum);
-  const paidNum = Math.max(0, Number(paid) || 0);
-  const due = Math.max(0, total - paidNum);
+  useEffect(() => {
+    let mounted = true;
+    void supabase.from("sale_items").select("*").eq("sale_id", sale.id).then(({ data, error: loadError }) => {
+      if (!mounted) return;
+      if (loadError) {
+        setError(loadError.message);
+      } else {
+        setItems((data ?? []).map(item => ({
+          id: item.product_id || item.id,
+          name: item.product_name,
+          price: Number(item.price),
+          qty: Number(item.quantity),
+          stock: Number(products.find(product => product.id === item.product_id)?.stock ?? 0) + Number(item.quantity),
+        })));
+      }
+      setLoadingItems(false);
+    });
+    return () => { mounted = false; };
+  }, [sale.id, products]);
+
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const rawDiscount = Math.max(0, Number(discountInput) || 0);
+  const discountAmount = discountType === "percent"
+    ? Math.min(subtotal, Math.round(subtotal * Math.min(rawDiscount, 100) / 100))
+    : Math.min(subtotal, Math.round(rawDiscount));
+  const total = Math.max(0, subtotal - discountAmount);
+  const paidAmount = Math.max(0, Number(paid) || 0);
+  const due = Math.max(0, total - paidAmount);
+  const searchMatches = itemSearch.trim()
+    ? products.filter(product => `${product.name} ${product.barcode ?? ""}`.toLowerCase().includes(itemSearch.trim().toLowerCase())).slice(0, 8)
+    : [];
+
+  function setItemQty(id: string, qty: number) {
+    setItems(previous => previous.flatMap(item => item.id === id ? (qty > 0 ? [{ ...item, qty: Math.min(item.stock, Math.floor(qty)) }] : []) : [item]));
+  }
+
+  function addProduct(product: Product) {
+    setItems(previous => {
+      const existing = previous.find(item => item.id === product.id);
+      if (existing) {
+        if (existing.qty >= existing.stock) return previous;
+        return previous.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item);
+      }
+      const availableStock = Number(product.stock) + Number(saleItems.reduce((sum, entry) => sum + (entry.sale_id === sale.id && entry.product_id === product.id ? Number(entry.quantity) : 0), 0));
+      if (availableStock < 1) return previous;
+      return [...previous, { id: product.id, name: product.name, price: Number(product.price), qty: 1, stock: availableStock }];
+    });
+    setItemSearch("");
+    itemSearchRef.current?.focus();
+  }
 
   async function save() {
+    if (!items.length) { setError("Add at least one item before saving."); return; }
+    if (!invoiceNo.trim()) { setError("Invoice number is required."); return; }
+    if (!createdAt) { setError("Choose the invoice date and time."); return; }
+    if (paidAmount < 0) { setError("Paid amount cannot be negative."); return; }
+    if (!actorId || !actorPin) { setError("Select your account and enter your PIN to confirm this change."); return; }
     setSaving(true);
-    await supabase.from("sales").update({
-      discount: discNum, total, paid: paidNum, due,
-    }).eq("id", sale.id);
+    setError("");
+    const timestamp = new Date(createdAt);
+    if (Number.isNaN(timestamp.getTime())) {
+      setSaving(false);
+      setError("Choose a valid invoice date and time.");
+      return;
+    }
+    const { error: saveError } = await supabase.rpc("update_sale_with_items_authorized", {
+      _sale_id: sale.id,
+      _invoice_no: invoiceNo.trim(),
+      _customer_id: customerId || null,
+      _subtotal: subtotal,
+      _discount: discountAmount,
+      _total: total,
+      _paid: paidAmount,
+      _due: due,
+      _created_at: timestamp.toISOString(),
+      _items: items.map(item => ({ product_id: products.some(product => product.id === item.id) ? item.id : null, product_name: item.name, price: item.price, quantity: item.qty })),
+      _actor_id: actorId,
+      _actor_pin: actorPin,
+    });
     setSaving(false);
+    if (saveError) {
+      setError(saveError.message.includes("Not authorized") ? "The selected account or PIN is not authorized to edit invoices." : saveError.message);
+      return;
+    }
+    const customer = customers.find(entry => entry.id === customerId);
+    const actingStaff = staff.find(entry => entry.id === actorId);
+    showInvoice({
+      invoice_no: invoiceNo.trim(), items, subtotal, discAmt: discountAmount, total, paid: paidAmount, due,
+      staff: actingStaff?.name || sale.staff?.name || "—", customer: customer?.name || "Walk-in",
+      customer_phone: customer?.phone || "", date: timestamp,
+    }, onCloseModal => {
+      onCloseModal(null);
+    });
     onSaved();
   }
 
   return (
-    <Modal title={`Edit Invoice — ${sale.invoice_no}`} setModal={() => onClose()} body={
-      <div>
-        <div className="form-group">
-          <label className="form-label">Subtotal</label>
-          <input className="form-input" value={fmt(Number(sale.subtotal))} disabled />
-        </div>
+    <Modal title={`Edit Invoice — ${sale.invoice_no}`} setModal={() => { if (!saving) onClose(); }} body={
+      <div style={{ display: "grid", gap: 12 }}>
         <div className="form-grid">
-          <div className="form-group">
-            <label className="form-label">Discount (৳)</label>
-            <input className="form-input" type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Invoice number</label>
+            <input className="form-input" value={invoiceNo} onChange={event => setInvoiceNo(event.target.value)} />
           </div>
-          <div className="form-group">
-            <label className="form-label">Paid (৳)</label>
-            <input className="form-input" type="number" value={paid} onChange={(e) => setPaid(e.target.value)} />
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Billing date &amp; time</label>
+            <input className="form-input" type="datetime-local" value={createdAt} onChange={event => setCreatedAt(event.target.value)} />
           </div>
         </div>
-        <div className="cart-row"><span>Grand Total</span><strong>{fmt(total)}</strong></div>
-        <div className="cart-row"><span>Due</span><strong className={due > 0 ? "text-danger" : "text-success"}>{fmt(due)}</strong></div>
+
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">Customer</label>
+          <select className="form-select" value={customerId} onChange={event => setCustomerId(event.target.value)}>
+            <option value="">Walk-in Customer</option>
+            {customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}{customer.phone ? ` · ${customer.phone}` : ""}</option>)}
+          </select>
+        </div>
+
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">Add or search products</label>
+          <div style={{ position: "relative" }}>
+            <input ref={itemSearchRef} className="form-input" value={itemSearch} placeholder="Search product name or barcode…" onChange={event => setItemSearch(event.target.value)} />
+            {searchMatches.length > 0 && <div style={{ position: "absolute", zIndex: 1, inset: "100% 0 auto", maxHeight: 190, overflowY: "auto", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 6 }}>
+              {searchMatches.map(product => <button key={product.id} type="button" className="btn" style={{ display: "flex", width: "100%", justifyContent: "space-between", border: 0, borderRadius: 0 }} onClick={() => addProduct(product)}><span>{product.name}</span><span>{fmt(Number(product.price))} · {product.stock} in stock</span></button>)}
+            </div>}
+          </div>
+        </div>
+
+        <div style={{ border: "1px solid var(--border)", borderRadius: 6, overflowX: "auto" }}>
+          <table>
+            <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
+            <tbody>
+              {loadingItems && <tr><td colSpan={5} className="empty-row">Loading invoice items…</td></tr>}
+              {!loadingItems && items.map(item => <tr key={item.id}>
+                <td>{item.name}</td>
+                <td><input aria-label={`Quantity for ${item.name}`} className="qty-input" type="number" min={1} max={item.stock} value={item.qty} onChange={event => setItemQty(item.id, Number(event.target.value) || 0)} /></td>
+                <td><input aria-label={`Price for ${item.name}`} className="price-input" type="number" min={0} value={item.price} onChange={event => setItems(previous => previous.map(entry => entry.id === item.id ? { ...entry, price: Math.max(0, Number(event.target.value) || 0) } : entry))} /></td>
+                <td>{fmt(item.price * item.qty)}</td>
+                <td><button type="button" className="btn btn-sm btn-icon btn-danger" aria-label={`Remove ${item.name}`} onClick={() => setItems(previous => previous.filter(entry => entry.id !== item.id))}><Trash2 size={13} /></button></td>
+              </tr>)}
+              {!loadingItems && items.length === 0 && <tr><td colSpan={5} className="empty-row">Add products to this invoice</td></tr>}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="form-grid">
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Discount</label>
+            <div style={{ display: "flex", gap: 6 }}>
+              <select aria-label="Discount type" className="form-select" style={{ width: 112 }} value={discountType} onChange={event => setDiscountType(event.target.value as "percent" | "flat")}><option value="percent">Percent %</option><option value="flat">Flat ৳</option></select>
+              <input aria-label="Discount amount" className="form-input" type="number" min={0} value={discountInput} onChange={event => setDiscountInput(event.target.value)} />
+            </div>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Paid (৳)</label>
+            <input className="form-input" type="number" min={0} value={paid} onChange={event => setPaid(event.target.value)} />
+          </div>
+        </div>
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+          <div className="cart-row"><span>Subtotal</span><strong>{fmt(subtotal)}</strong></div>
+          <div className="cart-row"><span>Discount</span><strong className="text-danger">− {fmt(discountAmount)}</strong></div>
+          <div className="cart-row"><span>Grand Total</span><strong>{fmt(total)}</strong></div>
+          <div className="cart-row"><span>Due</span><strong className={due > 0 ? "text-danger" : "text-success"}>{fmt(due)}</strong></div>
+        </div>
+
+        <div className="form-grid">
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Confirming Admin / Manager / Owner</label>
+            <select className="form-select" value={actorId} onChange={event => setActorId(event.target.value)}><option value="">Select account</option>{activeStaff.map(member => <option key={member.id} value={member.id}>{member.name} · {member.role}</option>)}</select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Account PIN</label>
+            <input className="form-input" type="password" inputMode="numeric" autoComplete="current-password" value={actorPin} onChange={event => setActorPin(event.target.value)} />
+          </div>
+        </div>
+        {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12 }}>{error}</div>}
       </div>
     } actions={[
       { label: "Cancel", onClick: onClose },
-      { label: saving ? "Saving…" : "Save", primary: true, icon: <Check size={14} />, onClick: save },
+      { label: saving ? "Saving…" : "Save invoice", primary: true, icon: <Check size={14} />, onClick: save },
     ]} />
   );
 }
