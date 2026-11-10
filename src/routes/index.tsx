@@ -1395,7 +1395,7 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
     const { error: saveError } = await supabase.rpc("update_sale_with_items_authorized", {
       _sale_id: sale.id,
       _invoice_no: invoiceNo.trim(),
-      _customer_id: customerId || null,
+      _customer_id: customerId || (null as unknown as string),
       _subtotal: subtotal,
       _discount: discountAmount,
       _total: total,
