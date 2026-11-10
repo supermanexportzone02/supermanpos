@@ -285,6 +285,23 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_sale_with_items_authorized: {
+        Args: {
+          _actor_id: string
+          _actor_pin: string
+          _created_at: string
+          _customer_id: string
+          _discount: number
+          _due: number
+          _invoice_no: string
+          _items: Json
+          _paid: number
+          _sale_id: string
+          _subtotal: number
+          _total: number
+        }
+        Returns: undefined
+      }
       verify_staff_pin: {
         Args: { _pin: string; _staff_id: string }
         Returns: {
