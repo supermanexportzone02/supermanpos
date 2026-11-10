@@ -1318,6 +1318,7 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
   const [actorPin, setActorPin] = useState("");
   const [items, setItems] = useState<CartItem[]>([]);
   const [originalItems, setOriginalItems] = useState<SaleItem[]>([]);
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
   const [itemSearch, setItemSearch] = useState("");
   const [loadingItems, setLoadingItems] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1414,7 +1415,7 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
     const actingStaff = staff.find(entry => entry.id === actorId);
     showInvoice({
       invoice_no: invoiceNo.trim(), items, subtotal, discAmt: discountAmount, total, paid: paidAmount, due,
-      staff: actingStaff?.name || sale.staff?.name || "—", customer: customer?.name || "Walk-in",
+      staff: sale.staff?.name || actingStaff?.name || "—", customer: customer?.name || "Walk-in",
       customer_phone: customer?.phone || "", date: timestamp,
     }, setModal);
     await onSaved();
@@ -1459,7 +1460,14 @@ function EditSaleForm({ sale, products, customers, staff, setModal, onClose, onS
               {loadingItems && <tr><td colSpan={5} className="empty-row">Loading invoice items…</td></tr>}
               {!loadingItems && items.map(item => <tr key={item.id}>
                 <td>{item.name}</td>
-                <td><input aria-label={`Quantity for ${item.name}`} className="qty-input" type="number" min={1} max={item.stock} value={item.qty} onChange={event => setItemQty(item.id, Number(event.target.value) || 0)} /></td>
+                <td><input aria-label={`Quantity for ${item.name}`} className="qty-input" type="number" min={1} max={item.stock} value={quantityDrafts[item.id] ?? String(item.qty)} onChange={event => {
+                  const raw = event.target.value;
+                  setQuantityDrafts(previous => ({ ...previous, [item.id]: raw }));
+                  if (raw && Number.isFinite(Number(raw))) setItemQty(item.id, Number(raw));
+                }} onBlur={() => {
+                  setQuantityDrafts(previous => { const next = { ...previous }; delete next[item.id]; return next; });
+                  if (!quantityDrafts[item.id] || Number(quantityDrafts[item.id]) < 1) setItemQty(item.id, item.qty);
+                }} /></td>
                 <td><input aria-label={`Price for ${item.name}`} className="price-input" type="number" min={0} value={item.price} onChange={event => setItems(previous => previous.map(entry => entry.id === item.id ? { ...entry, price: Math.max(0, Number(event.target.value) || 0) } : entry))} /></td>
                 <td>{fmt(item.price * item.qty)}</td>
                 <td><button type="button" className="btn btn-sm btn-icon btn-danger" aria-label={`Remove ${item.name}`} onClick={() => setItems(previous => previous.filter(entry => entry.id !== item.id))}><Trash2 size={13} /></button></td>
