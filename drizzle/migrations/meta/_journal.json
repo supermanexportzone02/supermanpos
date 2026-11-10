@@ -15,6 +15,13 @@
       "when": 1794294805485,
       "tag": "0001_secure_manager_invoice_edit_and_reconcile_items",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794297343055,
+      "tag": "0002_invoice_edit_without_pin",
+      "breakpoints": true
     }
   ]
 }
